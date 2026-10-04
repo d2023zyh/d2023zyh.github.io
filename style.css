@@ -1,0 +1,27 @@
+html, body {
+	background-color: black;
+	color: white;
+	font-family: Consolas;
+}
+
+h1, h2, p.normal {
+	text-align: center;
+}
+
+p.corner_bl {
+	position: absolute;
+	bottom: 0px;
+	left: 10px;
+	color: black;
+}
+
+p.corner_br {
+	position: absolute;
+	bottom: 0px;
+	right: 10px;
+	color: black;
+}
+
+a:hover {
+	color: mediumblue;
+}
