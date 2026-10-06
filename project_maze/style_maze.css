@@ -1,0 +1,27 @@
+table {
+	font-size: 24px;
+}
+
+td {
+	border: 3px solid #fff;
+}
+
+td.block_left {
+	border-left-color: #f00;
+}
+
+td.block_right {
+	border-right-color: #f00;
+}
+
+td.block_up {
+	border-top-color: #f00;
+}
+
+td.block_down {
+	border-bottom-color: #f00;
+}
+
+p.cancel_center {
+	text-margin: left;
+}
