@@ -1,0 +1,11 @@
+td.cursor {
+	cursor: move;
+}
+
+td.cursor_h {
+	cursor: e-resize;
+}
+
+td.cursor_v {
+	cursor: s-resize;
+}
