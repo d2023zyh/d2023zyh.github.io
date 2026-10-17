@@ -1,0 +1,8 @@
+p.left {
+	text-align: left;
+}
+
+details.prob {
+	position: relative;
+	left: 30%;
+}
