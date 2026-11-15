@@ -12,10 +12,6 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     display:flex;flex-direction:column;
   }
-
-  /* ============================================================
-     MENU BAR
-     ============================================================ */
   #menubar{
     display:flex;align-items:center;gap:2px;
     padding:0 8px;height:42px;
@@ -58,7 +54,6 @@
   .menu-item.danger:hover{background:#3a1f26}
   .menu-sep{height:1px;background:#2a394a;margin:4px 2px}
 
-  /* speed slider (now in menubar) */
   .speed-inline{
     display:flex;align-items:center;gap:8px;
     font-size:12px;color:#9fb3c8;
@@ -94,9 +89,6 @@
     background:#5b93ff;cursor:pointer;
   }
 
-  /* ============================================================
-     MAIN
-     ============================================================ */
   #main{
     flex:1 1 auto;display:flex;min-height:0;min-width:0;overflow:hidden;
     position:relative;
@@ -135,9 +127,6 @@
   #live tr[data-id]:hover td{background:#1d2a3a}
   kbd{background:#0e141c;border:1px solid #2f4054;border-radius:4px;padding:1px 5px;font-size:11px}
 
-  /* ============================================================
-     TIMELINE
-     ============================================================ */
   #timeline{
     flex:0 0 auto;display:flex;align-items:center;gap:10px;
     padding:7px 12px;background:#141b24;border-top:1px solid #24303f;
@@ -205,6 +194,9 @@
       <div class="menu-item" data-cmd="insert-V">Battery<span class="kbd">B · 4</span></div>
       <div class="menu-item" data-cmd="insert-SW">Switch<span class="kbd">T · 5</span></div>
       <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="insert-VS">AC Voltage<span class="kbd">Y · 9</span></div>
+      <div class="menu-item" data-cmd="insert-CS">AC Current<span class="kbd">Z · 0</span></div>
+      <div class="menu-sep"></div>
       <div class="menu-item" data-cmd="insert-AM">Ammeter<span class="kbd">A · 6</span></div>
       <div class="menu-item" data-cmd="insert-VM">Voltmeter<span class="kbd">V · 7</span></div>
       <div class="menu-item" data-cmd="insert-GND">Ground<span class="kbd">G · 8</span></div>
@@ -263,6 +255,8 @@
         Right‑click anything to delete it.<br>
         <b>Double‑click</b> a part to edit its value.<br>
         <b>Double‑click</b> a switch to toggle it.<br>
+        AC sources have adjustable <b>amplitude</b>,
+        <b>frequency</b> (Hz) and <b>phase</b> (°).<br>
         Simulation starts <b>paused</b> — press Space or Run.<br>
         <br>
         <b>Hotkeys</b><br>
@@ -270,9 +264,11 @@
         <kbd>H</kbd> pan &nbsp; <kbd>E</kbd> erase<br>
         <kbd>R</kbd> resistor &nbsp; <kbd>C</kbd> capacitor &nbsp;
         <kbd>L</kbd> inductor &nbsp; <kbd>B</kbd> battery<br>
-        <kbd>T</kbd> switch &nbsp; <kbd>A</kbd> ammeter &nbsp;
-        <kbd>V</kbd> voltmeter &nbsp; <kbd>G</kbd> ground<br>
-        <kbd>1</kbd>–<kbd>8</kbd> same as above (numbers)<br>
+        <kbd>T</kbd> switch &nbsp; <kbd>Y</kbd> AC voltage &nbsp;
+        <kbd>Z</kbd> AC current<br>
+        <kbd>A</kbd> ammeter &nbsp; <kbd>V</kbd> voltmeter &nbsp;
+        <kbd>G</kbd> ground<br>
+        <kbd>1</kbd>–<kbd>0</kbd> same as above (numbers, 0 = AC current)<br>
         <kbd>X</kbd> rotate &nbsp; <kbd>Del</kbd> delete &nbsp;
         <kbd>F</kbd> fit &nbsp; <kbd>Space</kbd> run/pause<br>
         <kbd>+</kbd>/<kbd>-</kbd> zoom &nbsp; <kbd>Esc</kbd> deselect
@@ -302,23 +298,28 @@ const MAX_STEPS  = 20000;
 const MIN_SCALE  = 0.2;
 const MAX_SCALE  = 6;
 const MAX_HIST   = 3000;
+const DEFAULT_RSER = 1e-3;   /* implicit series R for V/VS/AM (short-circuit guard) */
 
 const canvas = document.getElementById('cv');
 const ctx    = canvas.getContext('2d');
 let DPR = window.devicePixelRatio || 1;
 
 const TYPE_INFO = {
-  R:   { name:'Resistor',  unit:'Ω', def:1000, color:'#ffb454' },
-  C:   { name:'Capacitor', unit:'F', def:1e-4, color:'#4fd1c5' },
-  L:   { name:'Inductor',  unit:'H', def:0.1,  color:'#c084fc' },
-  V:   { name:'Battery',   unit:'V', def:5,    color:'#f87171' },
-  SW:  { name:'Switch',    unit:'',  def:0,    color:'#e2b04a' },
-  AM:  { name:'Ammeter',   unit:'A', def:0,    color:'#fbbf24' },
-  VM:  { name:'Voltmeter', unit:'V', def:0,    color:'#34d399' },
-  GND: { name:'Ground',    unit:'',  def:0,    color:'#94a3b8' },
+  R:   { name:'Resistor',     unit:'Ω', def:1000, color:'#ffb454' },
+  C:   { name:'Capacitor',    unit:'F', def:1e-4, color:'#4fd1c5' },
+  L:   { name:'Inductor',     unit:'H', def:0.1,  color:'#c084fc' },
+  V:   { name:'Battery',      unit:'V', def:5,    color:'#f87171' },
+  VS:  { name:'AC Voltage',   unit:'V', def:5,    color:'#ec4899' },
+  CS:  { name:'AC Current',   unit:'A', def:0.1,  color:'#a855f7' },
+  SW:  { name:'Switch',       unit:'',  def:0,    color:'#e2b04a' },
+  AM:  { name:'Ammeter',      unit:'A', def:0,    color:'#fbbf24' },
+  VM:  { name:'Voltmeter',    unit:'V', def:0,    color:'#34d399' },
+  GND: { name:'Ground',       unit:'',  def:0,    color:'#94a3b8' },
 };
-const HAS_VALUE = { R:1, C:1, L:1, V:1 };
-const HAS_RINT  = { C:1, L:1, V:1, SW:1, AM:1, VM:1 };
+const HAS_VALUE = { R:1, C:1, L:1, V:1, VS:1, CS:1 };
+const HAS_RINT  = { C:1, L:1, V:1, SW:1, AM:1, VM:1, VS:1 };
+const IS_AC     = { VS:1, CS:1 };
+const IS_VSRC   = { V:1, VS:1, AM:1 };   /* types that get an implicit series R floor */
 
 let comps = [];
 let wires = [];
@@ -451,7 +452,7 @@ function parseValueStrict(str){
   if (str === null || str === undefined) return null;
   let s = String(str).trim().replace(/\s+/g,'');
   if (!s) return null;
-  s = s.replace(/(ohms?|Ω|F|H|V|A)$/i, '');
+  s = s.replace(/(ohms?|Ω|F|H|V|A|Hz|deg)$/i, '');
   const mm = s.match(/^([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)(meg|MEG|Meg|[pnuµmkKMG])?$/);
   if (!mm) return null;
   const num = parseFloat(mm[1]);
@@ -514,12 +515,31 @@ function hitTest(mx,my){
 }
 
 /* ============================================================
+   EFFECTIVE INTERNAL RESISTANCE
+   ------------------------------------------------------------
+   V, VS, AM get an implicit 1 mΩ series R when the user
+   leaves rInternal = 0. This is a "numerical short-circuit
+   guard": an ideal 0 V / 0 V-Δ branch imposes an absolute
+   voltage constraint that makes the MNA matrix singular when
+   that branch is externally shorted (e.g. by a wire or a
+   closed switch). The 1 mΩ is negligible for normal circuits
+   (0.02 % error on a 5 Ω load) but keeps the matrix
+   well-conditioned even under a hard short.
+   ============================================================ */
+function effectiveInternalR(c){
+  if (IS_VSRC[c.type]){
+    return (c.rInternal > 0) ? c.rInternal : DEFAULT_RSER;
+  }
+  return (c.rInternal > 0) ? c.rInternal : 0;
+}
+function needsSeriesInternal(c){
+  if (effectiveInternalR(c) <= 0) return false;
+  return c.type === 'C' || c.type === 'L' || IS_VSRC[c.type];
+}
+
+/* ============================================================
    NETLIST
    ============================================================ */
-function needsSeriesInternal(c){
-  if (!c.rInternal || c.rInternal <= 0) return false;
-  return c.type === 'C' || c.type === 'L' || c.type === 'V' || c.type === 'AM';
-}
 function rebuildNetlist(){
   const idx = new Map();
   const parent = [];
@@ -628,98 +648,150 @@ function simulateStep(dt){
   if (netDirty) rebuildNetlist();
   const { entries, n, ref } = netlist;
   if (n === 0) return;
+
+  const tNew = simTime + dt;
+
   const nIdx = node => (node === ref) ? -1 : (node < ref ? node : node - 1);
+
   let vsCount = 0;
-  for (const e of entries) if (e.c.type === 'V' || e.c.type === 'AM') vsCount++;
+  for (const e of entries) if (IS_VSRC[e.c.type]) vsCount++;
   const m = (n - 1) + vsCount;
   if (m <= 0) return;
+
   const [A, b] = getBufs(m);
   const useBE = firstStep;
+
   function stampG(ia, ib, G){
     if (ia >= 0) A[ia][ia] += G;
     if (ib >= 0) A[ib][ib] += G;
     if (ia >= 0 && ib >= 0){ A[ia][ib] -= G; A[ib][ia] -= G; }
   }
+
   for (let i = 0; i < n-1; i++) A[i][i] += 1e-9;
+
   let k = n - 1;
   for (const e of entries){
-    const c = e.c;
-    const ia = nIdx(e.a);
-    const ib = (e.b === null) ? -1 : nIdx(e.b);
+    const c    = e.c;
+    const ia   = nIdx(e.a);
+    const ib   = (e.b   === null) ? -1 : nIdx(e.b);
     const iInt = (e.int === null) ? null : nIdx(e.int);
     const mainB = (iInt !== null) ? iInt : ib;
+
     if (c.type === 'R'){
       stampG(ia, mainB, 1 / Math.max(c.value, 1e-6));
+
     } else if (c.type === 'SW'){
       const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
-      const G = c.closed ? (1 / Rc) : 1e-12;
+      const G  = c.closed ? (1 / Rc) : 1e-12;
       stampG(ia, mainB, G);
+
     } else if (c.type === 'C'){
-      const G = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
+      const G   = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
       const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
       stampG(ia, mainB, G);
-      if (ia >= 0) b[ia] += Ieq;
+      if (ia    >= 0) b[ia]    += Ieq;
       if (mainB >= 0) b[mainB] -= Ieq;
+
     } else if (c.type === 'L'){
-      const G = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
+      const G   = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
       const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
       stampG(ia, mainB, G);
-      if (ia >= 0) b[ia] -= Ieq;
+      if (ia    >= 0) b[ia]    -= Ieq;
       if (mainB >= 0) b[mainB] += Ieq;
-    } else if (c.type === 'V' || c.type === 'AM'){
+
+    } else if (c.type === 'V' || c.type === 'AM' || c.type === 'VS'){
       const kk = k++;
-      if (ia >= 0){ A[ia][kk] += 1; A[kk][ia] += 1; }
+      if (ia    >= 0){ A[ia][kk]    += 1; A[kk][ia]    += 1; }
       if (mainB >= 0){ A[mainB][kk] -= 1; A[kk][mainB] -= 1; }
-      b[kk] = (c.type === 'V') ? c.value : 0;
+      if (c.type === 'V'){
+        b[kk] = c.value;
+      } else if (c.type === 'VS'){
+        const omega = 2 * Math.PI * (c.freq || 100);
+        const phase = (c.phase || 0) * Math.PI / 180;
+        b[kk] = c.value * Math.sin(omega * tNew + phase);
+      } else {
+        b[kk] = 0;
+      }
+
+    } else if (c.type === 'CS'){
+      // Current source: I flows OUT of terminal a (+) into the external circuit,
+      // returns to terminal b (−). Stamp: inject +I at a, −I at b.
+      const omega = 2 * Math.PI * (c.freq || 100);
+      const phase = (c.phase || 0) * Math.PI / 180;
+      const I = c.value * Math.sin(omega * tNew + phase);
+      if (ia >= 0) b[ia] += I;
+      if (ib >= 0) b[ib] -= I;
+
     } else if (c.type === 'VM'){
       if (c.rInternal > 0) stampG(ia, ib, 1 / c.rInternal);
     }
-    if (iInt !== null) stampG(iInt, ib, 1 / c.rInternal);
+
+    if (iInt !== null){
+      stampG(iInt, ib, 1 / effectiveInternalR(c));
+    }
   }
+
   const x = solveLinear(A, b, m);
   if (!x) return;
+
   const V = new Float64Array(n);
   for (let i = 0; i < n; i++){
     const mi = nIdx(i);
     V[i] = (mi < 0) ? 0 : x[mi];
   }
+
   k = n - 1;
   for (const e of entries){
-    const c = e.c;
-    const va = V[e.a];
-    const vb = (e.b === null) ? 0 : V[e.b];
+    const c   = e.c;
+    const va  = V[e.a];
+    const vb  = (e.b === null) ? 0 : V[e.b];
     const vInt = (e.int === null) ? null : V[e.int];
     const vTerminal = va - vb;
-    const vElement = (vInt !== null) ? (va - vInt) : vTerminal;
+    const vElement  = (vInt !== null) ? (va - vInt) : vTerminal;
+
     if (c.type === 'R'){
-      c._v = vTerminal; c._i = vTerminal / Math.max(c.value, 1e-6);
+      c._v = vTerminal;  c._i = vTerminal / Math.max(c.value, 1e-6);
+
     } else if (c.type === 'SW'){
       const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
-      const G = c.closed ? (1 / Rc) : 1e-12;
-      c._v = vTerminal; c._i = G * vTerminal;
+      const G  = c.closed ? (1 / Rc) : 1e-12;
+      c._v = vTerminal;  c._i = G * vTerminal;
+
     } else if (c.type === 'C'){
-      const G = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
+      const G   = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
       const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
       c._v = vTerminal;
       c._i = G * vElement - Ieq;
-      c.vPrev = vElement; c.iPrev = c._i;
+      c.vPrev = vElement;
+      c.iPrev = c._i;
+
     } else if (c.type === 'L'){
-      const G = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
+      const G   = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
       const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
       c._v = vTerminal;
       c._i = G * vElement + Ieq;
-      c.vPrev = vElement; c.iPrev = c._i;
-    } else if (c.type === 'V' || c.type === 'AM'){
+      c.vPrev = vElement;
+      c.iPrev = c._i;
+
+    } else if (c.type === 'V' || c.type === 'VS' || c.type === 'AM'){
       const iSrc = x[k++];
       c._v = vTerminal;
-      c._i = (c.type === 'V') ? -iSrc : iSrc;
-    } else {
+      c._i = (c.type === 'AM') ? iSrc : -iSrc;
+
+    } else if (c.type === 'CS'){
+      const omega = 2 * Math.PI * (c.freq || 100);
+      const phase = (c.phase || 0) * Math.PI / 180;
+      c._v = vTerminal;
+      c._i = c.value * Math.sin(omega * tNew + phase);
+
+    } else { // VM
       c._v = vTerminal;
       c._i = (c.rInternal > 0) ? vTerminal / c.rInternal : 0;
     }
   }
+
   firstStep = false;
-  simTime += dt;
+  simTime = tNew;
 }
 
 /* ============================================================
@@ -821,6 +893,21 @@ function pathBattery(){
   ctx.moveTo(-11,-24); ctx.lineTo(-11,-18);
   ctx.moveTo(8,-21); ctx.lineTo(14,-21);
 }
+function pathACSine(){
+  ctx.moveTo(-40,0); ctx.lineTo(-14,0);
+  ctx.moveTo(14,0);  ctx.lineTo(40,0);
+  ctx.moveTo(14,0);
+  ctx.arc(0,0,14,0,Math.PI*2,false);
+  // sine wave inside
+  ctx.moveTo(-8, 0);
+  ctx.quadraticCurveTo(-4, -9, 0, 0);
+  ctx.quadraticCurveTo(4, 9, 8, 0);
+}
+function pathACCurrent(){
+  pathACSine();
+  // arrow head near the + terminal side (left), indicating AC flow direction
+  ctx.moveTo(-11, -4); ctx.lineTo(-14, 0); ctx.lineTo(-11, 4);
+}
 function pathSwitch(c){
   ctx.moveTo(-40,0); ctx.lineTo(-10,0);
   ctx.moveTo(10,0);  ctx.lineTo(40,0);
@@ -906,14 +993,16 @@ function drawCompPath(c){
   if (isSel){ ctx.shadowColor = info.color; ctx.shadowBlur = 14 / view.scale; }
   ctx.beginPath();
   switch (c.type){
-    case 'R':   pathResistor();  break;
-    case 'C':   pathCapacitor(); break;
-    case 'L':   pathInductor();  break;
-    case 'V':   pathBattery();   break;
-    case 'SW':  pathSwitch(c);   break;
-    case 'AM':  pathMeter();     break;
-    case 'VM':  pathMeter();     break;
-    case 'GND': pathGround();    break;
+    case 'R':   pathResistor();   break;
+    case 'C':   pathCapacitor();  break;
+    case 'L':   pathInductor();   break;
+    case 'V':   pathBattery();    break;
+    case 'VS':  pathACSine();     break;
+    case 'CS':  pathACCurrent();  break;
+    case 'SW':  pathSwitch(c);    break;
+    case 'AM':  pathMeter();      break;
+    case 'VM':  pathMeter();      break;
+    case 'GND': pathGround();     break;
   }
   ctx.stroke();
   if (c.type === 'SW'){
@@ -942,25 +1031,32 @@ function drawCompText(c){
   const s = view.scale;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+
   let title = c.label;
   if (HAS_VALUE[c.type]) title += '  ' + eng(c.value, info.unit);
+  if (IS_AC[c.type] && c.freq) title += '  ' + eng(c.freq, 'Hz');
   if (c.type === 'SW') title += c.closed ? '  [closed]' : '  [open]';
+
   let tx = p.x, ty = p.y;
   if (c.type === 'GND'){ ty = p.y + 40 * s; }
   else if (c.horiz){ ty = p.y - 30 * s; }
-  else { tx = p.x + 34 * s; }
+  else { tx = p.x + 40 * s; }
+
   ctx.font = '600 11px ui-monospace,SFMono-Regular,Menlo,monospace';
   ctx.fillStyle = '#8ea4bb';
   ctx.fillText(title, tx, ty);
   if (c.type === 'GND') return;
+
   let reading;
   if (c.type === 'VM')      reading = eng(c._v || 0, 'V');
   else if (c.type === 'AM') reading = eng(c._i || 0, 'A');
+  else if (c.type === 'CS') reading = eng(c._i || 0, 'A') + ' · ' + eng(c._v || 0, 'V');
   else                      reading = eng(c._v || 0, 'V') + ' · ' + eng(c._i || 0, 'A');
+
   ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
   ctx.fillStyle = (c.type === 'AM' || c.type === 'VM') ? '#9fb8cf' : '#5b7c9c';
   if (c.horiz) ctx.fillText(reading, p.x, p.y + 32 * s);
-  else         ctx.fillText(reading, p.x + 34 * s, p.y + 14 * s);
+  else         ctx.fillText(reading, p.x + 40 * s, p.y + 14 * s);
 }
 function draw(){
   const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -973,7 +1069,7 @@ function draw(){
 }
 
 /* ============================================================
-   MOUSE INTERACTION (circuit)
+   MOUSE INTERACTION
    ============================================================ */
 function getMouse(e){
   const r = canvas.getBoundingClientRect();
@@ -1139,6 +1235,8 @@ function handleCommand(cmd){
     case 'insert-C':    setTool('C');     break;
     case 'insert-L':    setTool('L');     break;
     case 'insert-V':    setTool('V');     break;
+    case 'insert-VS':   setTool('VS');    break;
+    case 'insert-CS':   setTool('CS');    break;
     case 'insert-SW':   setTool('SW');    break;
     case 'insert-AM':   setTool('AM');    break;
     case 'insert-VM':   setTool('VM');    break;
@@ -1230,6 +1328,8 @@ function addComp(type, gx, gy, horiz, value){
     value: (value !== undefined) ? value : TYPE_INFO[type].def,
     rInternal: 0,
     closed: false,
+    freq: IS_AC[type] ? 100 : 0,
+    phase: 0,
     label: nextLabel(type),
     vPrev: 0, iPrev: 0, _v: 0, _i: 0
   };
@@ -1286,6 +1386,8 @@ function refreshInspectorLive(){
     (c.rInternal > 0 ? 'Finite input R — loads the circuit slightly' : 'Ideal open — draws no current') + '</div>';
   else if (c.type === 'SW') html += '<div class="muted" style="margin-top:6px">' +
     (c.closed ? 'Closed — conducting' : 'Open — blocking') + '</div>';
+  else if (IS_AC[c.type])   html += '<div class="muted" style="margin-top:6px">' +
+    'Sine, f = ' + eng(c.freq, 'Hz') + ', φ = ' + (c.phase || 0).toFixed(1) + '°</div>';
   inspLiveEl.innerHTML = html;
 }
 function updateInspector(){
@@ -1310,6 +1412,7 @@ function updateInspector(){
   const isGnd = c.type === 'GND';
   const editable = !!HAS_VALUE[c.type];
   const hasRInt = !!HAS_RINT[c.type];
+  const isAC = !!IS_AC[c.type];
 
   let html = '<div class="insp-head"><span class="dot" style="background:' + info.color + '"></span>' +
              info.name + '</div>';
@@ -1326,9 +1429,17 @@ function updateInspector(){
   }
 
   if (editable){
-    html += '<div class="row" style="margin-top:8px"><label>Value (' + info.unit + ')</label></div>';
+    const ampLabel = isAC ? 'Amplitude' : 'Value';
+    html += '<div class="row" style="margin-top:8px"><label>' + ampLabel + ' (' + info.unit + ')</label></div>';
     html += '<input type="text" id="valInput" value="' + escAttr(fmtInput(c.value)) + '">';
     html += '<div id="valHint">' + eng(c.value, info.unit) + '</div>';
+  }
+
+  if (isAC){
+    html += '<div class="row" style="margin-top:8px"><label>Frequency (Hz)</label></div>';
+    html += '<input type="text" id="freqInput" value="' + escAttr(fmtInput(c.freq || 100)) + '">';
+    html += '<div class="row" style="margin-top:8px"><label>Phase (°)</label></div>';
+    html += '<input type="text" id="phaseInput" value="' + escAttr(fmtInput(c.phase || 0)) + '">';
   }
 
   if (hasRInt){
@@ -1336,9 +1447,10 @@ function updateInspector(){
     let rHint  = '0 = ideal';
     if (c.type === 'C')       rHint = '0 = ideal capacitor (no ESR)';
     else if (c.type === 'L')  rHint = '0 = ideal inductor (no DCR)';
-    else if (c.type === 'V')  rHint = '0 = ideal battery (no internal R)';
+    else if (c.type === 'V')  rHint = '0 = ideal battery (1 mΩ implicit)';
+    else if (c.type === 'VS') rHint = '0 = ideal AC source (1 mΩ implicit)';
     else if (c.type === 'SW'){ rLabel = 'Contact R (Ω)'; rHint = '0 = default contact R (10 mΩ)'; }
-    else if (c.type === 'AM') rHint = '0 = ideal ammeter (no burden)';
+    else if (c.type === 'AM') rHint = '0 = ideal ammeter (1 mΩ implicit)';
     else if (c.type === 'VM'){ rLabel = 'Input R (Ω)'; rHint = '0 = ideal voltmeter (no loading)'; }
     html += '<div class="row" style="margin-top:8px"><label>' + rLabel + '</label></div>';
     html += '<input type="text" id="rIntInput" value="' + escAttr(fmtInput(c.rInternal)) + '">';
@@ -1370,7 +1482,8 @@ function updateInspector(){
     const hint = document.getElementById('valHint');
     const problem = v => {
       if (v === null || !isFinite(v)) return 'invalid number';
-      if (c.type !== 'V' && v <= 0)   return 'must be > 0';
+      if ((c.type === 'R' || c.type === 'C' || c.type === 'L') && v <= 0) return 'must be > 0';
+      if (isAC && v < 0) return 'must be ≥ 0';
       return null;
     };
     inp.oninput = () => {
@@ -1395,6 +1508,30 @@ function updateInspector(){
       resetTimeline();
     };
     inp.onkeydown = (e) => { if (e.key === 'Enter') inp.blur(); };
+  }
+
+  if (isAC){
+    const fInp = document.getElementById('freqInput');
+    const pInp = document.getElementById('phaseInput');
+    const positive = v => (v !== null && isFinite(v) && v > 0);
+    fInp.onchange = () => {
+      const v = parseValueStrict(fInp.value);
+      if (!positive(v)){ fInp.value = fmtInput(c.freq || 100); return; }
+      c.freq = v;
+      fInp.value = fmtInput(v);
+      netDirty = true;
+      resetTimeline();
+    };
+    fInp.onkeydown = (e) => { if (e.key === 'Enter') fInp.blur(); };
+    pInp.onchange = () => {
+      const v = parseValueStrict(pInp.value);
+      if (v === null || !isFinite(v)){ pInp.value = fmtInput(c.phase || 0); return; }
+      c.phase = v;
+      pInp.value = fmtInput(v);
+      netDirty = true;
+      resetTimeline();
+    };
+    pInp.onkeydown = (e) => { if (e.key === 'Enter') pInp.blur(); };
   }
 
   if (hasRInt){
@@ -1456,6 +1593,7 @@ function updateLive(){
     if (c.type === 'GND') continue;
     let name = c.label;
     if (c.type === 'SW') name += c.closed ? ' [C]' : ' [O]';
+    if (IS_AC[c.type] && c.freq) name += ' @' + eng(c.freq, 'Hz');
     rows += '<tr data-id="' + c.id + '">' +
               '<td>' + escAttr(name) + '</td>' +
               '<td class="num">' + eng(c._v || 0, 'V') + '</td>' +
@@ -1492,29 +1630,26 @@ function setSpeed(val){
 }
 
 /* ============================================================
-   KEYBOARD — new hotkey scheme
+   KEYBOARD
    ============================================================ */
 window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const k = e.key;
 
-  /* Tools */
   if      (k === 's' || k === 'S'){ setTool('select'); }
   else if (k === 'w' || k === 'W'){ setTool('wire'); }
   else if (k === 'h' || k === 'H'){ setTool('pan'); }
   else if (k === 'e' || k === 'E'){ setTool('erase'); }
-
-  /* Insert components — mnemonic letters (primary) or numbers (alternate) */
   else if (k === 'r' || k === 'R' || k === '1'){ setTool('R'); }
   else if (k === 'c' || k === 'C' || k === '2'){ setTool('C'); }
   else if (k === 'l' || k === 'L' || k === '3'){ setTool('L'); }
-  else if (k === 'b' || k === 'B' || k === '4'){ setTool('V'); }   // battery
+  else if (k === 'b' || k === 'B' || k === '4'){ setTool('V'); }
   else if (k === 't' || k === 'T' || k === '5'){ setTool('SW'); }
+  else if (k === 'y' || k === 'Y' || k === '9'){ setTool('VS'); }
+  else if (k === 'z' || k === 'Z' || k === '0'){ setTool('CS'); }
   else if (k === 'a' || k === 'A' || k === '6'){ setTool('AM'); }
   else if (k === 'v' || k === 'V' || k === '7'){ setTool('VM'); }
   else if (k === 'g' || k === 'G' || k === '8'){ setTool('GND'); }
-
-  /* Actions */
   else if (k === 'x' || k === 'X'){ rotateAction(); }
   else if (k === 'Escape'){ selected = null; updateInspector(); }
   else if (k === ' '){ e.preventDefault(); toggleRun(); }
@@ -1528,7 +1663,7 @@ window.addEventListener('keydown', e => {
 });
 
 /* ============================================================
-   DEMO — RLC with switch, ammeter, voltmeter
+   DEMO
    ============================================================ */
 function loadDemo(){
   comps.length = 0;
