@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer #1 - Circuit</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:#0e131a;color:#dbe4ee;overflow:hidden;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;
+  }
+
+  /* ============================================================
+     MENU BAR
+     ============================================================ */
+  #menubar{
+    display:flex;align-items:center;gap:2px;
+    padding:0 8px;height:42px;
+    background:#141b24;border-bottom:1px solid #24303f;
+    flex:0 0 auto;user-select:none;position:relative;z-index:50;
+  }
+  .menu{position:relative}
+  .menu-btn{
+    background:transparent;color:#cfe0f0;
+    border:1px solid transparent;border-radius:4px;
+    padding:6px 11px;cursor:pointer;
+    font-size:13px;font-family:inherit;transition:.12s;
+  }
+  .menu-btn:hover{background:#26364a}
+  .menu.open .menu-btn{
+    background:#2f6feb;border-color:#5b93ff;color:#fff;
+    box-shadow:0 0 12px #2f6feb66;
+  }
+  .menu-panel{
+    display:none;position:absolute;top:100%;left:0;
+    min-width:250px;background:#1a2430;
+    border:1px solid #2f4054;border-radius:6px;
+    box-shadow:0 10px 30px #000a;
+    padding:4px;z-index:100;margin-top:2px;
+  }
+  .menu.open .menu-panel{display:block}
+  .menu-item{
+    padding:7px 12px;border-radius:4px;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;
+    gap:20px;font-size:13px;color:#cfe0f0;transition:.08s;
+  }
+  .menu-item:hover{background:#2a3a50}
+  .menu-item .kbd{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:10.5px;color:#7f97b0;
+    background:#0e141c;border:1px solid #2f4054;
+    border-radius:3px;padding:0 5px;
+  }
+  .menu-item.danger{color:#ffb3c0}
+  .menu-item.danger:hover{background:#3a1f26}
+  .menu-sep{height:1px;background:#2a394a;margin:4px 2px}
+
+  /* speed slider (now in menubar) */
+  .speed-inline{
+    display:flex;align-items:center;gap:8px;
+    font-size:12px;color:#9fb3c8;
+    padding:0 12px;margin-left:6px;white-space:nowrap;
+    border-left:1px solid #2b3949;
+  }
+  .speed-inline .lbl{white-space:nowrap}
+  .speed-inline .readout{
+    font-family:ui-monospace,monospace;color:#8fd0ff;
+    min-width:56px;text-align:right;font-weight:600;
+  }
+  .speed-inline input[type=range]{width:140px}
+
+  .menu-status{
+    margin-left:auto;display:flex;align-items:center;gap:8px;
+    font-size:12px;color:#9fb3c8;padding-left:10px;
+  }
+  .status-item{white-space:nowrap}
+  .status-sep{width:1px;height:14px;background:#2b3949}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    height:4px;border-radius:2px;background:#2f4054;
+    outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;
+    background:#5b93ff;border:2px solid #1d2733;box-shadow:0 0 8px #5b93ff88;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border:2px solid #1d2733;border-radius:50%;
+    background:#5b93ff;cursor:pointer;
+  }
+
+  /* ============================================================
+     MAIN
+     ============================================================ */
+  #main{
+    flex:1 1 auto;display:flex;min-height:0;min-width:0;overflow:hidden;
+    position:relative;
+  }
+  #cv{
+    flex:1 1 0;min-width:0;min-height:0;display:block;
+    cursor:crosshair;touch-action:none;
+  }
+  #side{
+    flex:0 1 300px;width:300px;min-width:180px;max-width:40vw;
+    background:#141b24;border-left:1px solid #24303f;
+    padding:10px;overflow-y:auto;overflow-x:hidden;font-size:13px;
+  }
+  .card{background:#182231;border:1px solid #24303f;border-radius:8px;padding:10px;margin-bottom:10px;overflow:hidden}
+  .card h3{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7f97b0;font-weight:600}
+  .muted{color:#6d829a;font-size:12px;word-break:break-word}
+  .row{display:flex;gap:8px;align-items:center;margin:6px 0}
+  .row label{flex:1;font-size:12px;color:#9fb3c8}
+  input[type=text]{
+    width:100%;background:#0e141c;border:1px solid #2f4054;color:#dbe4ee;
+    border-radius:5px;padding:5px 8px;font-family:ui-monospace,monospace;font-size:13px;
+  }
+  input[type=text]:focus{outline:none;border-color:#2f6feb;box-shadow:0 0 0 2px #2f6feb33}
+  .insp-head{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;margin-bottom:8px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .insp-live{margin-top:10px;border-top:1px dashed #24303f;padding-top:8px}
+  .kv{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#9fb3c8;gap:6px}
+  .kv b{font-family:ui-monospace,monospace;color:#8fd0ff;font-weight:600;white-space:nowrap}
+  #valHint.err, #rIntHint.err{color:#ff8a9b}
+  #valHint, #rIntHint{font-size:12px;color:#6d829a;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:#7f97b0;font-weight:600;padding:2px 4px;border-bottom:1px solid #24303f}
+  td{padding:3px 4px;border-bottom:1px solid #1c2733;white-space:nowrap}
+  td.num{text-align:right;font-family:ui-monospace,monospace;color:#8fd0ff}
+  #live tr[data-id]{cursor:pointer}
+  #live tr[data-id]:hover td{background:#1d2a3a}
+  kbd{background:#0e141c;border:1px solid #2f4054;border-radius:4px;padding:1px 5px;font-size:11px}
+
+  /* ============================================================
+     TIMELINE
+     ============================================================ */
+  #timeline{
+    flex:0 0 auto;display:flex;align-items:center;gap:10px;
+    padding:7px 12px;background:#141b24;border-top:1px solid #24303f;
+  }
+  #timeline input[type=range]{flex:1 1 auto;width:auto}
+  #timeLabel{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:#8fd0ff;font-size:12px;min-width:112px;text-align:right;font-weight:600;
+  }
+  #btnLive{
+    background:#123024;border:1px solid #1f5e3f;color:#7ee2a8;
+    padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer;
+    font-family:inherit;transition:.12s;
+  }
+  #btnLive:hover{background:#17412f;border-color:#2a7a52}
+  #btnLive.scrubbing{background:#3a2a12;border-color:#7a5a1f;color:#ffd77e}
+  #tlHint{font-size:11px;color:#5b7288;white-space:nowrap}
+
+  @media (max-width: 640px){
+    #main{flex-direction:column}
+    #side{
+      flex:0 0 auto;width:100%;max-width:100%;min-width:0;
+      max-height:38vh;border-left:none;border-top:1px solid #24303f;
+    }
+    #cv{min-height:180px}
+    .menu-status{display:none}
+    #tlHint{display:none}
+    .speed-inline{padding:0 6px}
+    .speed-inline .lbl{display:none}
+    .speed-inline input[type=range]{width:90px}
+  }
+</style>
+</head>
+<body>
+
+<div id="menubar">
+  <div class="menu" data-menu="file">
+    <button class="menu-btn">File</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="load-demo">Load demo circuit</div>
+      <div class="menu-sep"></div>
+      <div class="menu-item danger" data-cmd="clear">Clear circuit</div>
+    </div>
+  </div>
+
+  <div class="menu" data-menu="edit">
+    <button class="menu-btn">Edit</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="tool-select">Select tool<span class="kbd">S</span></div>
+      <div class="menu-item" data-cmd="tool-wire">Wire tool<span class="kbd">W</span></div>
+      <div class="menu-item" data-cmd="tool-pan">Pan tool<span class="kbd">H</span></div>
+      <div class="menu-item" data-cmd="tool-erase">Erase tool<span class="kbd">E</span></div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="rotate">Rotate selected<span class="kbd">X</span></div>
+      <div class="menu-item danger" data-cmd="delete">Delete selected<span class="kbd">Del</span></div>
+    </div>
+  </div>
+
+  <div class="menu" data-menu="insert">
+    <button class="menu-btn">Insert</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="insert-R">Resistor<span class="kbd">R · 1</span></div>
+      <div class="menu-item" data-cmd="insert-C">Capacitor<span class="kbd">C · 2</span></div>
+      <div class="menu-item" data-cmd="insert-L">Inductor<span class="kbd">L · 3</span></div>
+      <div class="menu-item" data-cmd="insert-V">Battery<span class="kbd">B · 4</span></div>
+      <div class="menu-item" data-cmd="insert-SW">Switch<span class="kbd">T · 5</span></div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="insert-AM">Ammeter<span class="kbd">A · 6</span></div>
+      <div class="menu-item" data-cmd="insert-VM">Voltmeter<span class="kbd">V · 7</span></div>
+      <div class="menu-item" data-cmd="insert-GND">Ground<span class="kbd">G · 8</span></div>
+    </div>
+  </div>
+
+  <div class="menu" data-menu="simulate">
+    <button class="menu-btn">Simulate</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="toggle-run">Run / Pause<span class="kbd">Space</span></div>
+      <div class="menu-item" data-cmd="reset">Reset simulation</div>
+    </div>
+  </div>
+
+  <div class="menu" data-menu="view">
+    <button class="menu-btn">View</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="zoom-in">Zoom in<span class="kbd">+</span></div>
+      <div class="menu-item" data-cmd="zoom-out">Zoom out<span class="kbd">-</span></div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="fit">Fit view<span class="kbd">F</span></div>
+    </div>
+  </div>
+
+  <label class="speed-inline">
+    <span class="lbl">Speed</span>
+    <input type="range" id="speed" min="0" max="100" step="0.5" value="50">
+    <span class="readout" id="speedVal">1.00×</span>
+  </label>
+
+  <div class="menu-status">
+    <span class="status-item" id="statusTool">✥ Select</span>
+    <span class="status-sep"></span>
+    <span class="status-item" id="statusRun">⏸ Paused</span>
+  </div>
+</div>
+
+<div id="main">
+  <canvas id="cv"></canvas>
+  <aside id="side">
+    <div class="card">
+      <h3>Inspector</h3>
+      <div id="inspector"><div class="muted">Nothing selected</div></div>
+    </div>
+    <div class="card">
+      <h3>Live values</h3>
+      <div id="live"><div class="muted">No components</div></div>
+    </div>
+    <div class="card">
+      <h3>How to use</h3>
+      <div class="muted" style="line-height:1.7">
+        <b>Insert</b> a part from the menu (or press its letter), then click the canvas.<br>
+        <b>Wire</b>: drag between two points.<br>
+        <b>Select</b>: click to select, drag to move.<br>
+        <b>Pan</b>: drag to pan &nbsp;·&nbsp; <b>wheel</b> to zoom.<br>
+        Right‑click anything to delete it.<br>
+        <b>Double‑click</b> a part to edit its value.<br>
+        <b>Double‑click</b> a switch to toggle it.<br>
+        Simulation starts <b>paused</b> — press Space or Run.<br>
+        <br>
+        <b>Hotkeys</b><br>
+        <kbd>S</kbd> select &nbsp; <kbd>W</kbd> wire &nbsp;
+        <kbd>H</kbd> pan &nbsp; <kbd>E</kbd> erase<br>
+        <kbd>R</kbd> resistor &nbsp; <kbd>C</kbd> capacitor &nbsp;
+        <kbd>L</kbd> inductor &nbsp; <kbd>B</kbd> battery<br>
+        <kbd>T</kbd> switch &nbsp; <kbd>A</kbd> ammeter &nbsp;
+        <kbd>V</kbd> voltmeter &nbsp; <kbd>G</kbd> ground<br>
+        <kbd>1</kbd>–<kbd>8</kbd> same as above (numbers)<br>
+        <kbd>X</kbd> rotate &nbsp; <kbd>Del</kbd> delete &nbsp;
+        <kbd>F</kbd> fit &nbsp; <kbd>Space</kbd> run/pause<br>
+        <kbd>+</kbd>/<kbd>-</kbd> zoom &nbsp; <kbd>Esc</kbd> deselect
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div id="timeline">
+  <button id="btnLive">⏵ Live</button>
+  <input type="range" id="timeSlider" min="0" max="0" step="1" value="0">
+  <span id="timeLabel">t = 0.0000 s</span>
+  <span id="tlHint">drag to rewind</span>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CONSTANTS & STATE
+   ============================================================ */
+const GRID = 20;
+const HALF = 2;
+const DT   = 1e-4;
+const BASE_STEPS = 150;
+const MAX_STEPS  = 20000;
+const MIN_SCALE  = 0.2;
+const MAX_SCALE  = 6;
+const MAX_HIST   = 3000;
+
+const canvas = document.getElementById('cv');
+const ctx    = canvas.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+
+const TYPE_INFO = {
+  R:   { name:'Resistor',  unit:'Ω', def:1000, color:'#ffb454' },
+  C:   { name:'Capacitor', unit:'F', def:1e-4, color:'#4fd1c5' },
+  L:   { name:'Inductor',  unit:'H', def:0.1,  color:'#c084fc' },
+  V:   { name:'Battery',   unit:'V', def:5,    color:'#f87171' },
+  SW:  { name:'Switch',    unit:'',  def:0,    color:'#e2b04a' },
+  AM:  { name:'Ammeter',   unit:'A', def:0,    color:'#fbbf24' },
+  VM:  { name:'Voltmeter', unit:'V', def:0,    color:'#34d399' },
+  GND: { name:'Ground',    unit:'',  def:0,    color:'#94a3b8' },
+};
+const HAS_VALUE = { R:1, C:1, L:1, V:1 };
+const HAS_RINT  = { C:1, L:1, V:1, SW:1, AM:1, VM:1 };
+
+let comps = [];
+let wires = [];
+let nextId = 1;
+
+let tool = 'select';
+let orient = 'h';
+let selected = null;
+let hovered  = null;
+let drag = null;
+let panDrag = null;
+let wireStart = null, wireEnd = null;
+
+let running = false;
+let simTime = 0;
+let speed   = 1;
+let netDirty = true;
+let netlist  = null;
+let firstStep = true;
+
+let inspLiveEl = null;
+
+const view = { ox: 40, oy: 40, scale: 1 };
+let viewReady = false;
+
+let hist = [];
+let scrubIdx = -1;
+
+const timeSlider   = document.getElementById('timeSlider');
+const timeLabel    = document.getElementById('timeLabel');
+const btnLive      = document.getElementById('btnLive');
+const speedEl      = document.getElementById('speed');
+const speedValEl   = document.getElementById('speedVal');
+
+/* ============================================================
+   CANVAS SIZING
+   ============================================================ */
+function resize(){
+  DPR = window.devicePixelRatio || 1;
+  const r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width  * DPR));
+  const h = Math.max(1, Math.round(r.height * DPR));
+  if (canvas.width !== w)  canvas.width  = w;
+  if (canvas.height !== h) canvas.height = h;
+}
+window.addEventListener('resize', resize);
+
+/* ============================================================
+   VIEW TRANSFORM
+   ============================================================ */
+function gridToScreen(gx, gy){
+  return { x: view.ox + gx * GRID * view.scale, y: view.oy + gy * GRID * view.scale };
+}
+function screenToGrid(sx, sy){
+  return { x: (sx - view.ox) / (GRID * view.scale), y: (sy - view.oy) / (GRID * view.scale) };
+}
+function fitView(){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;
+  if (comps.length === 0 && wires.length === 0){
+    view.scale = 1;
+    view.ox = W/2 - 10 * GRID;
+    view.oy = H/2 - 10 * GRID;
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const c of comps){
+    let x1, y1, x2, y2;
+    if (c.type === 'GND'){ x1 = c.cx - 1; y1 = c.cy - 0.5; x2 = c.cx + 1; y2 = c.cy + 1.5; }
+    else if (c.horiz){ x1 = c.cx - 2.4; y1 = c.cy - 1.4; x2 = c.cx + 2.4; y2 = c.cy + 1.4; }
+    else { x1 = c.cx - 1.4; y1 = c.cy - 2.4; x2 = c.cx + 1.4; y2 = c.cy + 2.4; }
+    if (x1 < minX) minX = x1; if (y1 < minY) minY = y1;
+    if (x2 > maxX) maxX = x2; if (y2 > maxY) maxY = y2;
+  }
+  for (const w of wires){
+    if (w.x1 < minX) minX = w.x1; if (w.y1 < minY) minY = w.y1;
+    if (w.x2 < minX) minX = w.x2; if (w.y2 < minY) minY = w.y2;
+    if (w.x1 > maxX) maxX = w.x1; if (w.y1 > maxY) maxY = w.y1;
+    if (w.x2 > maxX) maxX = w.x2; if (w.y2 > maxY) maxY = w.y2;
+  }
+  const pad = 2;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const wGrid = Math.max(0.1, maxX - minX);
+  const hGrid = Math.max(0.1, maxY - minY);
+  let scale = Math.min(W / (wGrid * GRID), H / (hGrid * GRID));
+  scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+  view.scale = scale;
+  view.ox = (W - wGrid * GRID * scale) / 2 - minX * GRID * scale;
+  view.oy = (H - hGrid * GRID * scale) / 2 - minY * GRID * scale;
+}
+function zoomBy(factor){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const cx = W/2, cy = H/2;
+  const oldScale = view.scale;
+  let newScale = oldScale * factor;
+  newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+  if (newScale === oldScale) return;
+  const gx = (cx - view.ox) / (GRID * oldScale);
+  const gy = (cy - view.oy) / (GRID * oldScale);
+  view.scale = newScale;
+  view.ox = cx - gx * GRID * newScale;
+  view.oy = cy - gy * GRID * newScale;
+}
+
+/* ============================================================
+   FORMATTING / PARSING
+   ============================================================ */
+function eng(v, unit){
+  if (v === null || v === undefined || !isFinite(v)) return '—';
+  if (v === 0) return '0 ' + unit;
+  const s = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  const P = [[1e9,'G'],[1e6,'M'],[1e3,'k'],[1,''],[1e-3,'m'],[1e-6,'µ'],[1e-9,'n'],[1e-12,'p']];
+  for (const [f,p] of P){
+    if (a >= f * 0.99999){
+      const n = a / f;
+      const txt = n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2);
+      return s + txt + ' ' + p + unit;
+    }
+  }
+  return s + a.toExponential(1) + ' ' + unit;
+}
+function fmtInput(v){
+  const a = Math.abs(v);
+  if (v !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(3);
+  return String(+v.toPrecision(6));
+}
+const MULT = { p:1e-12, n:1e-9, u:1e-6, 'µ':1e-6, m:1e-3, k:1e3, K:1e3, M:1e6, G:1e9 };
+function parseValueStrict(str){
+  if (str === null || str === undefined) return null;
+  let s = String(str).trim().replace(/\s+/g,'');
+  if (!s) return null;
+  s = s.replace(/(ohms?|Ω|F|H|V|A)$/i, '');
+  const mm = s.match(/^([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)(meg|MEG|Meg|[pnuµmkKMG])?$/);
+  if (!mm) return null;
+  const num = parseFloat(mm[1]);
+  if (!isFinite(num)) return null;
+  let mul = 1;
+  if (mm[2]){
+    if (/^meg$/i.test(mm[2])) mul = 1e6;
+    else mul = MULT[mm[2]] ?? 1;
+  }
+  return num * mul;
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+/* ============================================================
+   GEOMETRY
+   ============================================================ */
+function compTerminals(c){
+  if (c.type === 'GND') return [[c.cx, c.cy], null];
+  if (c.horiz) return [[c.cx - HALF, c.cy], [c.cx + HALF, c.cy]];
+  return [[c.cx, c.cy - HALF], [c.cx, c.cy + HALF]];
+}
+function compBounds(c){
+  const p = gridToScreen(c.cx, c.cy);
+  const s = view.scale;
+  if (c.type === 'GND') return { x: p.x - 20*s, y: p.y - 8*s, w: 40*s, h: 36*s };
+  if (c.horiz) return { x: p.x - 44*s, y: p.y - 20*s, w: 88*s, h: 40*s };
+  return { x: p.x - 20*s, y: p.y - 44*s, w: 40*s, h: 88*s };
+}
+function distToSeg(px,py,x1,y1,x2,y2){
+  const dx = x2-x1, dy = y2-y1;
+  const L2 = dx*dx + dy*dy;
+  let t = L2 ? ((px-x1)*dx + (py-y1)*dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx = x1 + t*dx, qy = y1 + t*dy;
+  return Math.hypot(px-qx, py-qy);
+}
+function onSegment(px,py,w){
+  const {x1,y1,x2,y2} = w;
+  const cross = (px-x1)*(y2-y1) - (py-y1)*(x2-x1);
+  if (Math.abs(cross) > 1e-9) return false;
+  return ((px-x1)*(px-x2) + (py-y1)*(py-y2)) <= 0;
+}
+function hitTest(mx,my){
+  for (let i = comps.length-1; i >= 0; i--){
+    const b = compBounds(comps[i]);
+    if (mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h)
+      return { kind:'comp', comp: comps[i] };
+  }
+  const thresh = Math.max(5, 8 * view.scale);
+  for (let i = wires.length-1; i >= 0; i--){
+    const w = wires[i];
+    const p1 = gridToScreen(w.x1, w.y1);
+    const p2 = gridToScreen(w.x2, w.y2);
+    if (distToSeg(mx,my, p1.x,p1.y, p2.x,p2.y) < thresh)
+      return { kind:'wire', wire: w };
+  }
+  return null;
+}
+
+/* ============================================================
+   NETLIST
+   ============================================================ */
+function needsSeriesInternal(c){
+  if (!c.rInternal || c.rInternal <= 0) return false;
+  return c.type === 'C' || c.type === 'L' || c.type === 'V' || c.type === 'AM';
+}
+function rebuildNetlist(){
+  const idx = new Map();
+  const parent = [];
+  function pid(x,y){
+    const k = x + ',' + y;
+    let i = idx.get(k);
+    if (i === undefined){ i = parent.length; idx.set(k, i); parent.push(i); }
+    return i;
+  }
+  function find(i){ while (parent[i] !== i){ parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
+  function uni(a,b){ a = find(a); b = find(b); if (a !== b) parent[b] = a; }
+
+  for (const w of wires) uni(pid(w.x1,w.y1), pid(w.x2,w.y2));
+  const entries = [];
+  for (const c of comps){
+    const [t1,t2] = compTerminals(c);
+    const p1 = pid(t1[0], t1[1]);
+    const p2 = t2 ? pid(t2[0], t2[1]) : null;
+    let pInt = null;
+    if (needsSeriesInternal(c) && p2 !== null){
+      pInt = parent.length;
+      parent.push(pInt);
+    }
+    entries.push({ c, p1, p2, pInt });
+  }
+  for (const w of wires){
+    const base = idx.get(w.x1 + ',' + w.y1);
+    for (const [k, i] of idx){
+      const cpos = k.indexOf(',');
+      const px = +k.slice(0,cpos), py = +k.slice(cpos+1);
+      if (onSegment(px,py,w)) uni(base, i);
+    }
+  }
+  const gndPts = entries.filter(e => e.c.type === 'GND').map(e => e.p1);
+  for (let i = 1; i < gndPts.length; i++) uni(gndPts[0], gndPts[i]);
+  const nodeMap = new Map();
+  function nodeOf(p){
+    const r = find(p);
+    if (!nodeMap.has(r)) nodeMap.set(r, nodeMap.size);
+    return nodeMap.get(r);
+  }
+  for (const e of entries){
+    e.a   = nodeOf(e.p1);
+    e.b   = (e.p2  === null) ? null : nodeOf(e.p2);
+    e.int = (e.pInt === null) ? null : nodeOf(e.pInt);
+  }
+  const n = nodeMap.size;
+  let ref = 0;
+  const g = entries.find(e => e.c.type === 'GND');
+  if (g) ref = g.a;
+  netlist = { entries, n, ref };
+  netDirty = false;
+}
+
+/* ============================================================
+   LINEAR SOLVER
+   ============================================================ */
+let _bufA = null, _bufB = null, _bufM = -1;
+function getBufs(m){
+  if (_bufM !== m){
+    _bufM = m;
+    _bufA = [];
+    for (let i = 0; i < m; i++) _bufA.push(new Float64Array(m));
+    _bufB = new Float64Array(m);
+  } else {
+    for (let i = 0; i < m; i++) _bufA[i].fill(0);
+    _bufB.fill(0);
+  }
+  return [_bufA, _bufB];
+}
+function solveLinear(A, b, n){
+  for (let i = 0; i < n; i++){
+    let p = i, best = Math.abs(A[i][i]);
+    for (let r = i+1; r < n; r++){
+      const v = Math.abs(A[r][i]);
+      if (v > best){ best = v; p = r; }
+    }
+    if (best < 1e-16) return null;
+    if (p !== i){
+      const t = A[i]; A[i] = A[p]; A[p] = t;
+      const tb = b[i]; b[i] = b[p]; b[p] = tb;
+    }
+    const piv = A[i][i], Ai = A[i];
+    for (let r = i+1; r < n; r++){
+      const f = A[r][i] / piv;
+      if (f === 0) continue;
+      const Ar = A[r];
+      for (let c = i; c < n; c++) Ar[c] -= f * Ai[c];
+      b[r] -= f * b[i];
+    }
+  }
+  const x = new Float64Array(n);
+  for (let i = n-1; i >= 0; i--){
+    let s = b[i];
+    const Ai = A[i];
+    for (let c = i+1; c < n; c++) s -= Ai[c] * x[c];
+    x[i] = s / Ai[i];
+  }
+  return x;
+}
+
+/* ============================================================
+   SIMULATION
+   ============================================================ */
+function simulateStep(dt){
+  if (netDirty) rebuildNetlist();
+  const { entries, n, ref } = netlist;
+  if (n === 0) return;
+  const nIdx = node => (node === ref) ? -1 : (node < ref ? node : node - 1);
+  let vsCount = 0;
+  for (const e of entries) if (e.c.type === 'V' || e.c.type === 'AM') vsCount++;
+  const m = (n - 1) + vsCount;
+  if (m <= 0) return;
+  const [A, b] = getBufs(m);
+  const useBE = firstStep;
+  function stampG(ia, ib, G){
+    if (ia >= 0) A[ia][ia] += G;
+    if (ib >= 0) A[ib][ib] += G;
+    if (ia >= 0 && ib >= 0){ A[ia][ib] -= G; A[ib][ia] -= G; }
+  }
+  for (let i = 0; i < n-1; i++) A[i][i] += 1e-9;
+  let k = n - 1;
+  for (const e of entries){
+    const c = e.c;
+    const ia = nIdx(e.a);
+    const ib = (e.b === null) ? -1 : nIdx(e.b);
+    const iInt = (e.int === null) ? null : nIdx(e.int);
+    const mainB = (iInt !== null) ? iInt : ib;
+    if (c.type === 'R'){
+      stampG(ia, mainB, 1 / Math.max(c.value, 1e-6));
+    } else if (c.type === 'SW'){
+      const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
+      const G = c.closed ? (1 / Rc) : 1e-12;
+      stampG(ia, mainB, G);
+    } else if (c.type === 'C'){
+      const G = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
+      const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
+      stampG(ia, mainB, G);
+      if (ia >= 0) b[ia] += Ieq;
+      if (mainB >= 0) b[mainB] -= Ieq;
+    } else if (c.type === 'L'){
+      const G = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
+      const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
+      stampG(ia, mainB, G);
+      if (ia >= 0) b[ia] -= Ieq;
+      if (mainB >= 0) b[mainB] += Ieq;
+    } else if (c.type === 'V' || c.type === 'AM'){
+      const kk = k++;
+      if (ia >= 0){ A[ia][kk] += 1; A[kk][ia] += 1; }
+      if (mainB >= 0){ A[mainB][kk] -= 1; A[kk][mainB] -= 1; }
+      b[kk] = (c.type === 'V') ? c.value : 0;
+    } else if (c.type === 'VM'){
+      if (c.rInternal > 0) stampG(ia, ib, 1 / c.rInternal);
+    }
+    if (iInt !== null) stampG(iInt, ib, 1 / c.rInternal);
+  }
+  const x = solveLinear(A, b, m);
+  if (!x) return;
+  const V = new Float64Array(n);
+  for (let i = 0; i < n; i++){
+    const mi = nIdx(i);
+    V[i] = (mi < 0) ? 0 : x[mi];
+  }
+  k = n - 1;
+  for (const e of entries){
+    const c = e.c;
+    const va = V[e.a];
+    const vb = (e.b === null) ? 0 : V[e.b];
+    const vInt = (e.int === null) ? null : V[e.int];
+    const vTerminal = va - vb;
+    const vElement = (vInt !== null) ? (va - vInt) : vTerminal;
+    if (c.type === 'R'){
+      c._v = vTerminal; c._i = vTerminal / Math.max(c.value, 1e-6);
+    } else if (c.type === 'SW'){
+      const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
+      const G = c.closed ? (1 / Rc) : 1e-12;
+      c._v = vTerminal; c._i = G * vTerminal;
+    } else if (c.type === 'C'){
+      const G = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
+      const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
+      c._v = vTerminal;
+      c._i = G * vElement - Ieq;
+      c.vPrev = vElement; c.iPrev = c._i;
+    } else if (c.type === 'L'){
+      const G = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
+      const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
+      c._v = vTerminal;
+      c._i = G * vElement + Ieq;
+      c.vPrev = vElement; c.iPrev = c._i;
+    } else if (c.type === 'V' || c.type === 'AM'){
+      const iSrc = x[k++];
+      c._v = vTerminal;
+      c._i = (c.type === 'V') ? -iSrc : iSrc;
+    } else {
+      c._v = vTerminal;
+      c._i = (c.rInternal > 0) ? vTerminal / c.rInternal : 0;
+    }
+  }
+  firstStep = false;
+  simTime += dt;
+}
+
+/* ============================================================
+   TIMELINE
+   ============================================================ */
+function pushSnapshot(){
+  const states = {};
+  for (const c of comps){
+    states[c.id] = [c.vPrev || 0, c.iPrev || 0, c._v || 0, c._i || 0, c.closed ? 1 : 0];
+  }
+  hist.push({ t: simTime, firstStep, states });
+  if (hist.length > MAX_HIST){
+    const keep = [];
+    for (let i = 0; i < hist.length; i += 2) keep.push(hist[i]);
+    const last = hist[hist.length - 1];
+    if (keep[keep.length - 1] !== last) keep.push(last);
+    hist = keep;
+    if (scrubIdx >= 0) scrubIdx = Math.min(scrubIdx, keep.length - 1);
+  }
+}
+function restoreSnapshot(s){
+  simTime = s.t;
+  firstStep = s.firstStep;
+  for (const c of comps){
+    const st = s.states[c.id];
+    if (st){
+      c.vPrev = st[0]; c.iPrev = st[1]; c._v = st[2]; c._i = st[3];
+      if (st.length > 4 && c.type === 'SW') c.closed = !!st[4];
+    } else {
+      c.vPrev = 0; c.iPrev = 0; c._v = 0; c._i = 0;
+    }
+  }
+  updateInspector();
+}
+function resetTimeline(){
+  hist = [];
+  scrubIdx = -1;
+  pushSnapshot();
+  updateTimeUI();
+}
+function scrubTo(i){
+  if (i < 0 || i >= hist.length) return;
+  running = false;
+  scrubIdx = i;
+  restoreSnapshot(hist[i]);
+  updateTimeUI();
+  updateStatus();
+}
+function goLive(){
+  if (scrubIdx >= 0){
+    hist = hist.slice(0, scrubIdx + 1);
+    scrubIdx = -1;
+  }
+  running = true;
+  updateTimeUI();
+  updateStatus();
+}
+function updateTimeUI(){
+  const maxIdx = Math.max(0, hist.length - 1);
+  if (timeSlider.max !== String(maxIdx)) timeSlider.max = String(maxIdx);
+  const val = (scrubIdx >= 0) ? scrubIdx : maxIdx;
+  if (timeSlider.value !== String(val)) timeSlider.value = String(val);
+  timeLabel.textContent = 't = ' + simTime.toFixed(4) + ' s';
+  btnLive.classList.toggle('scrubbing', scrubIdx >= 0);
+  btnLive.textContent = (scrubIdx >= 0) ? '⏵ Go Live' : '⏵ Live';
+}
+timeSlider.addEventListener('input', () => scrubTo(parseInt(timeSlider.value, 10)));
+btnLive.addEventListener('click', goLive);
+
+/* ============================================================
+   COMPONENT SHAPES
+   ============================================================ */
+function pathResistor(){
+  const zz = [[-20,0],[-13.33,-10],[-6.67,10],[0,-10],[6.67,10],[13.33,-10],[20,0]];
+  ctx.moveTo(-40,0); ctx.lineTo(-20,0);
+  for (const [x,y] of zz) ctx.lineTo(x,y);
+  ctx.lineTo(40,0);
+}
+function pathCapacitor(){
+  ctx.moveTo(-40,0); ctx.lineTo(-7,0);
+  ctx.moveTo(7,0);   ctx.lineTo(40,0);
+  ctx.moveTo(-7,-15); ctx.lineTo(-7,15);
+  ctx.moveTo(7,-15);  ctx.lineTo(7,15);
+}
+function pathInductor(){
+  ctx.moveTo(-40,0); ctx.lineTo(-32,0);
+  for (let i = 0; i < 4; i++){
+    const x0 = -32 + i*16;
+    ctx.arc(x0 + 8, 0, 8, Math.PI, 2*Math.PI, false);
+  }
+  ctx.moveTo(32,0); ctx.lineTo(40,0);
+}
+function pathBattery(){
+  ctx.moveTo(-40,0); ctx.lineTo(-6,0);
+  ctx.moveTo(6,0);   ctx.lineTo(40,0);
+  ctx.moveTo(-6,-16); ctx.lineTo(-6,16);
+  ctx.moveTo(6,-8);   ctx.lineTo(6,8);
+  ctx.moveTo(-14,-21); ctx.lineTo(-8,-21);
+  ctx.moveTo(-11,-24); ctx.lineTo(-11,-18);
+  ctx.moveTo(8,-21); ctx.lineTo(14,-21);
+}
+function pathSwitch(c){
+  ctx.moveTo(-40,0); ctx.lineTo(-10,0);
+  ctx.moveTo(10,0);  ctx.lineTo(40,0);
+  if (c.closed){ ctx.moveTo(-10,0); ctx.lineTo(10,0); }
+  else { ctx.moveTo(-10,0); ctx.lineTo(8,-12); }
+}
+function pathMeter(){
+  ctx.moveTo(-40,0); ctx.lineTo(-14,0);
+  ctx.moveTo(14,0);  ctx.lineTo(40,0);
+  ctx.moveTo(14,0);
+  ctx.arc(0,0,14,0,Math.PI*2,false);
+}
+function pathGround(){
+  ctx.moveTo(0,0);   ctx.lineTo(0,12);
+  ctx.moveTo(-15,12); ctx.lineTo(15,12);
+  ctx.moveTo(-9,18);  ctx.lineTo(9,18);
+  ctx.moveTo(-4,24);  ctx.lineTo(4,24);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function drawGrid(){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const step = GRID * view.scale;
+  if (step < 5) return;
+  const startX = ((view.ox % step) + step) % step;
+  const startY = ((view.oy % step) + step) % step;
+  const r = step < 12 ? 1 : 1.5;
+  ctx.fillStyle = '#1e2a38';
+  ctx.beginPath();
+  for (let x = startX; x <= W; x += step)
+    for (let y = startY; y <= H; y += step)
+      ctx.rect(x - r, y - r, r*2, r*2);
+  ctx.fill();
+}
+function drawWires(){
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const w of wires){
+    const isSel = selected && selected.kind === 'wire' && selected.wire === w;
+    const isHov = hovered  && hovered.kind  === 'wire' && hovered.wire  === w;
+    const p1 = gridToScreen(w.x1, w.y1);
+    const p2 = gridToScreen(w.x2, w.y2);
+    ctx.strokeStyle = isSel ? '#ffffff' : isHov ? '#7fb4e8' : '#3d5975';
+    ctx.lineWidth = isSel ? 4 : 3;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
+  if (tool === 'wire' && wireStart && wireEnd){
+    const p1 = gridToScreen(wireStart.x, wireStart.y);
+    const p2 = gridToScreen(wireEnd.x, wireEnd.y);
+    ctx.save();
+    ctx.setLineDash([6,5]);
+    ctx.strokeStyle = '#5b93ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#5b93ff';
+    ctx.beginPath();
+    ctx.arc(p1.x, p1.y, 4, 0, 6.283);
+    ctx.fill();
+  }
+}
+function drawCompPath(c){
+  const p = gridToScreen(c.cx, c.cy);
+  const info = TYPE_INFO[c.type];
+  const isSel = selected && selected.kind === 'comp' && selected.comp === c;
+  const isHov = hovered  && hovered.kind  === 'comp' && hovered.comp  === c;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.scale(view.scale, view.scale);
+  if (c.type !== 'GND' && !c.horiz) ctx.rotate(Math.PI/2);
+  ctx.lineWidth = isSel ? 3 : 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = isSel ? '#ffffff' : isHov ? '#a9d5ff' : info.color;
+  if (isSel){ ctx.shadowColor = info.color; ctx.shadowBlur = 14 / view.scale; }
+  ctx.beginPath();
+  switch (c.type){
+    case 'R':   pathResistor();  break;
+    case 'C':   pathCapacitor(); break;
+    case 'L':   pathInductor();  break;
+    case 'V':   pathBattery();   break;
+    case 'SW':  pathSwitch(c);   break;
+    case 'AM':  pathMeter();     break;
+    case 'VM':  pathMeter();     break;
+    case 'GND': pathGround();    break;
+  }
+  ctx.stroke();
+  if (c.type === 'SW'){
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.arc(-10, 0, 2, 0, Math.PI*2);
+    ctx.moveTo(12, 0);
+    ctx.arc(10, 0, 2, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+  if (c.type === 'AM' || c.type === 'VM'){
+    const fs = Math.max(8, 15 * view.scale);
+    ctx.save();
+    ctx.font = '700 ' + fs + 'px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isSel ? '#ffffff' : info.color;
+    ctx.fillText(c.type === 'AM' ? 'A' : 'V', p.x, p.y + fs * 0.03);
+    ctx.restore();
+  }
+}
+function drawCompText(c){
+  const p = gridToScreen(c.cx, c.cy);
+  const info = TYPE_INFO[c.type];
+  const s = view.scale;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let title = c.label;
+  if (HAS_VALUE[c.type]) title += '  ' + eng(c.value, info.unit);
+  if (c.type === 'SW') title += c.closed ? '  [closed]' : '  [open]';
+  let tx = p.x, ty = p.y;
+  if (c.type === 'GND'){ ty = p.y + 40 * s; }
+  else if (c.horiz){ ty = p.y - 30 * s; }
+  else { tx = p.x + 34 * s; }
+  ctx.font = '600 11px ui-monospace,SFMono-Regular,Menlo,monospace';
+  ctx.fillStyle = '#8ea4bb';
+  ctx.fillText(title, tx, ty);
+  if (c.type === 'GND') return;
+  let reading;
+  if (c.type === 'VM')      reading = eng(c._v || 0, 'V');
+  else if (c.type === 'AM') reading = eng(c._i || 0, 'A');
+  else                      reading = eng(c._v || 0, 'V') + ' · ' + eng(c._i || 0, 'A');
+  ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
+  ctx.fillStyle = (c.type === 'AM' || c.type === 'VM') ? '#9fb8cf' : '#5b7c9c';
+  if (c.horiz) ctx.fillText(reading, p.x, p.y + 32 * s);
+  else         ctx.fillText(reading, p.x + 34 * s, p.y + 14 * s);
+}
+function draw(){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawGrid();
+  drawWires();
+  for (const c of comps) drawCompPath(c);
+  for (const c of comps) drawCompText(c);
+}
+
+/* ============================================================
+   MOUSE INTERACTION (circuit)
+   ============================================================ */
+function getMouse(e){
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+canvas.addEventListener('mousedown', e => {
+  const p = getMouse(e);
+  if (e.button === 1){
+    panDrag = { sx: e.clientX, sy: e.clientY, ox: view.ox, oy: view.oy };
+    e.preventDefault(); return;
+  }
+  if (e.button === 2) return;
+  if (tool === 'pan'){
+    panDrag = { sx: e.clientX, sy: e.clientY, ox: view.ox, oy: view.oy };
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+  const g = screenToGrid(p.x, p.y);
+  const gx = Math.round(g.x), gy = Math.round(g.y);
+  if (tool === 'select'){
+    const hit = hitTest(p.x, p.y);
+    selected = hit;
+    if (hit && hit.kind === 'comp'){
+      drag = { comp: hit.comp, offX: hit.comp.cx - g.x, offY: hit.comp.cy - g.y };
+    }
+    updateInspector();
+  } else if (tool === 'wire'){
+    wireStart = { x: gx, y: gy };
+    wireEnd   = { x: gx, y: gy };
+  } else if (tool === 'erase'){
+    const hit = hitTest(p.x, p.y);
+    if (hit) deleteElement(hit);
+  } else {
+    placeComponent(tool, gx, gy);
+  }
+});
+canvas.addEventListener('mousemove', e => {
+  const p = getMouse(e);
+  if (panDrag){
+    view.ox = panDrag.ox + (e.clientX - panDrag.sx);
+    view.oy = panDrag.oy + (e.clientY - panDrag.sy);
+    return;
+  }
+  if (drag && drag.comp){
+    const g = screenToGrid(p.x, p.y);
+    drag.comp.cx = Math.round(g.x + drag.offX);
+    drag.comp.cy = Math.round(g.y + drag.offY);
+    netDirty = true;
+    return;
+  }
+  if (tool === 'wire' && wireStart){
+    const g = screenToGrid(p.x, p.y);
+    wireEnd = { x: Math.round(g.x), y: Math.round(g.y) };
+  }
+  hovered = (tool === 'select' || tool === 'erase') ? hitTest(p.x, p.y) : null;
+});
+canvas.addEventListener('dblclick', e => {
+  const p = getMouse(e);
+  const hit = hitTest(p.x, p.y);
+  if (!hit || hit.kind !== 'comp') return;
+  if (hit.comp.type === 'SW'){ toggleSwitch(hit.comp); return; }
+  setTool('select');
+  selected = hit;
+  updateInspector();
+  const inp = document.getElementById('valInput')
+           || document.getElementById('rIntInput')
+           || document.getElementById('lblInput');
+  if (inp){ inp.focus(); inp.select(); }
+});
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const hit = hitTest(getMouse(e).x, getMouse(e).y);
+  if (hit) deleteElement(hit);
+});
+canvas.addEventListener('mouseleave', () => {
+  hovered = null; wireStart = null; wireEnd = null;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = getMouse(e);
+  const oldScale = view.scale;
+  let newScale = oldScale * Math.exp(-e.deltaY * 0.0015);
+  newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+  if (newScale === oldScale) return;
+  const gx = (p.x - view.ox) / (GRID * oldScale);
+  const gy = (p.y - view.oy) / (GRID * oldScale);
+  view.scale = newScale;
+  view.ox = p.x - gx * GRID * newScale;
+  view.oy = p.y - gy * GRID * newScale;
+}, { passive: false });
+
+window.addEventListener('mouseup', () => {
+  if (panDrag){
+    panDrag = null;
+    if (tool === 'pan') canvas.style.cursor = 'grab';
+  }
+  if (drag){
+    drag = null;
+    netDirty = true;
+    resetTimeline();
+  }
+  if (tool === 'wire' && wireStart && wireEnd){
+    if (wireStart.x !== wireEnd.x || wireStart.y !== wireEnd.y){
+      wires.push({ x1:wireStart.x, y1:wireStart.y, x2:wireEnd.x, y2:wireEnd.y });
+      netDirty = true;
+      resetTimeline();
+    }
+  }
+  wireStart = null; wireEnd = null;
+});
+
+/* ============================================================
+   MENU SYSTEM
+   ============================================================ */
+function closeAllMenus(){
+  document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open'));
+}
+document.querySelectorAll('.menu-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const menu = btn.parentElement;
+    const wasOpen = menu.classList.contains('open');
+    closeAllMenus();
+    if (!wasOpen) menu.classList.add('open');
+  });
+});
+document.querySelectorAll('.menu-item').forEach(item => {
+  item.addEventListener('click', e => {
+    e.stopPropagation();
+    closeAllMenus();
+    handleCommand(item.dataset.cmd);
+  });
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('.menu')) return;
+  closeAllMenus();
+});
+document.querySelectorAll('.menu-panel').forEach(p => {
+  p.addEventListener('click', e => e.stopPropagation());
+});
+speedEl.addEventListener('input', () => setSpeed(parseFloat(speedEl.value)));
+
+function handleCommand(cmd){
+  switch (cmd){
+    case 'load-demo':
+      loadDemo(); resetTimeline(); updateInspector(); updateLive(); fitView();
+      break;
+    case 'clear': doClearCircuit(); break;
+    case 'reset':
+      simTime = 0; firstStep = true;
+      for (const c of comps){ c.vPrev = 0; c.iPrev = 0; c._v = 0; c._i = 0; }
+      netDirty = true;
+      resetTimeline();
+      break;
+    case 'toggle-run':  toggleRun();      break;
+    case 'tool-select': setTool('select');break;
+    case 'tool-wire':   setTool('wire');  break;
+    case 'tool-pan':    setTool('pan');   break;
+    case 'tool-erase':  setTool('erase'); break;
+    case 'rotate':      rotateAction();   break;
+    case 'delete':      if (selected) deleteElement(selected); break;
+    case 'insert-R':    setTool('R');     break;
+    case 'insert-C':    setTool('C');     break;
+    case 'insert-L':    setTool('L');     break;
+    case 'insert-V':    setTool('V');     break;
+    case 'insert-SW':   setTool('SW');    break;
+    case 'insert-AM':   setTool('AM');    break;
+    case 'insert-VM':   setTool('VM');    break;
+    case 'insert-GND':  setTool('GND');   break;
+    case 'zoom-in':     zoomBy(1.2);      break;
+    case 'zoom-out':    zoomBy(1/1.2);    break;
+    case 'fit':         fitView();        break;
+  }
+}
+
+/* ============================================================
+   CLEAR CIRCUIT
+   ============================================================ */
+function doClearCircuit(){
+  drag = null; panDrag = null;
+  wireStart = null; wireEnd = null;
+  hovered = null; selected = null;
+
+  comps.length = 0;
+  wires.length = 0;
+  nextId = 1;
+
+  simTime = 0;
+  firstStep = true;
+  netDirty = true;
+
+  hist = [];
+  scrubIdx = -1;
+  pushSnapshot();
+  updateTimeUI();
+
+  updateInspector();
+  updateLive();
+  setTool('select');
+  fitView();
+}
+
+/* ============================================================
+   TOOL / MODE
+   ============================================================ */
+function setTool(t){
+  tool = t;
+  canvas.style.cursor =
+    (t === 'select') ? 'default' :
+    (t === 'erase')  ? 'not-allowed' :
+    (t === 'pan')    ? 'grab' :
+    'crosshair';
+  updateStatus();
+}
+function toggleRun(){
+  if (scrubIdx >= 0){ goLive(); return; }
+  running = !running;
+  updateStatus();
+}
+
+/* ============================================================
+   STATUS BAR
+   ============================================================ */
+function updateStatus(){
+  let toolTxt = 'Select';
+  if (tool === 'wire')  toolTxt = 'Wire';
+  else if (tool === 'pan')   toolTxt = 'Pan';
+  else if (tool === 'erase') toolTxt = 'Erase';
+  else if (TYPE_INFO[tool])  toolTxt = 'Insert ' + TYPE_INFO[tool].name;
+  const toolEl = document.getElementById('statusTool');
+  if (toolEl) toolEl.textContent = '✥ ' + toolTxt;
+  const runEl = document.getElementById('statusRun');
+  if (runEl){
+    if (scrubIdx >= 0) runEl.textContent = '⏸ Rewound';
+    else if (running)  runEl.textContent = '▶ Running';
+    else               runEl.textContent = '⏸ Paused';
+  }
+}
+
+/* ============================================================
+   MODEL MUTATION
+   ============================================================ */
+function nextLabel(type){
+  let i = 1;
+  const used = new Set(comps.map(c => c.label));
+  while (used.has(type + i)) i++;
+  return type + i;
+}
+function addComp(type, gx, gy, horiz, value){
+  const c = {
+    id: nextId++, type,
+    cx: gx, cy: gy,
+    horiz: (type === 'GND') ? true : horiz,
+    value: (value !== undefined) ? value : TYPE_INFO[type].def,
+    rInternal: 0,
+    closed: false,
+    label: nextLabel(type),
+    vPrev: 0, iPrev: 0, _v: 0, _i: 0
+  };
+  comps.push(c);
+  netDirty = true;
+  return c;
+}
+function placeComponent(type, gx, gy){
+  const c = addComp(type, gx, gy, orient === 'h');
+  selected = { kind:'comp', comp: c };
+  netDirty = true;
+  resetTimeline();
+  updateInspector();
+}
+function deleteElement(hit){
+  if (hit.kind === 'comp') comps = comps.filter(c => c !== hit.comp);
+  else                     wires = wires.filter(w => w !== hit.wire);
+  selected = null; hovered = null;
+  netDirty = true;
+  resetTimeline();
+  updateInspector();
+}
+function rotateAction(){
+  if (selected && selected.kind === 'comp' && selected.comp.type !== 'GND'){
+    selected.comp.horiz = !selected.comp.horiz;
+    netDirty = true;
+    resetTimeline();
+  } else {
+    orient = (orient === 'h') ? 'v' : 'h';
+  }
+}
+function toggleSwitch(c){
+  if (c.type !== 'SW') return;
+  c.closed = !c.closed;
+  netDirty = true;
+  updateInspector();
+  updateLive();
+}
+
+/* ============================================================
+   INSPECTOR
+   ============================================================ */
+function refreshInspectorLive(){
+  if (!inspLiveEl) return;
+  if (!selected || selected.kind !== 'comp' || selected.comp.type === 'GND'){
+    inspLiveEl.innerHTML = '';
+    return;
+  }
+  const c = selected.comp;
+  let html = '<div class="kv"><span>Voltage</span><b>' + eng(c._v || 0, 'V') + '</b></div>' +
+             '<div class="kv"><span>Current</span><b>' + eng(c._i || 0, 'A') + '</b></div>';
+  if (c.type === 'AM')      html += '<div class="muted" style="margin-top:6px">Ideal short — reads the branch current</div>';
+  else if (c.type === 'VM') html += '<div class="muted" style="margin-top:6px">' +
+    (c.rInternal > 0 ? 'Finite input R — loads the circuit slightly' : 'Ideal open — draws no current') + '</div>';
+  else if (c.type === 'SW') html += '<div class="muted" style="margin-top:6px">' +
+    (c.closed ? 'Closed — conducting' : 'Open — blocking') + '</div>';
+  inspLiveEl.innerHTML = html;
+}
+function updateInspector(){
+  const el = document.getElementById('inspector');
+  inspLiveEl = null;
+  if (!selected){
+    el.innerHTML = '<div class="muted">Nothing selected</div>';
+    return;
+  }
+  if (selected.kind === 'wire'){
+    const w = selected.wire;
+    el.innerHTML =
+      '<div class="insp-head"><span class="dot" style="background:#3d5975"></span>Wire</div>' +
+      '<div class="muted" style="margin:6px 0 10px">(' + w.x1 + ',' + w.y1 + ') → (' +
+      w.x2 + ',' + w.y2 + ')</div>' +
+      '<button id="delSel" style="background:#3a1f26;border:1px solid #6d2f3d;color:#ffb3c0;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit">Delete</button>';
+    document.getElementById('delSel').onclick = () => deleteElement(selected);
+    return;
+  }
+  const c = selected.comp;
+  const info = TYPE_INFO[c.type];
+  const isGnd = c.type === 'GND';
+  const editable = !!HAS_VALUE[c.type];
+  const hasRInt = !!HAS_RINT[c.type];
+
+  let html = '<div class="insp-head"><span class="dot" style="background:' + info.color + '"></span>' +
+             info.name + '</div>';
+  html += '<div class="row"><label>Label</label></div>';
+  html += '<input type="text" id="lblInput" value="' + escAttr(c.label) + '">';
+
+  if (c.type === 'SW'){
+    html += '<div class="row" style="margin-top:8px"><label>State</label></div>';
+    html += '<button id="toggleSwBtn" style="width:100%;padding:8px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;' +
+      (c.closed
+        ? 'background:#123024;border:1px solid #1f5e3f;color:#7ee2a8;'
+        : 'background:#3a1f26;border:1px solid #6d2f3d;color:#ffb3c0;') +
+      '">' + (c.closed ? '● Closed — click to open' : '○ Open — click to close') + '</button>';
+  }
+
+  if (editable){
+    html += '<div class="row" style="margin-top:8px"><label>Value (' + info.unit + ')</label></div>';
+    html += '<input type="text" id="valInput" value="' + escAttr(fmtInput(c.value)) + '">';
+    html += '<div id="valHint">' + eng(c.value, info.unit) + '</div>';
+  }
+
+  if (hasRInt){
+    let rLabel = 'Internal R (Ω)';
+    let rHint  = '0 = ideal';
+    if (c.type === 'C')       rHint = '0 = ideal capacitor (no ESR)';
+    else if (c.type === 'L')  rHint = '0 = ideal inductor (no DCR)';
+    else if (c.type === 'V')  rHint = '0 = ideal battery (no internal R)';
+    else if (c.type === 'SW'){ rLabel = 'Contact R (Ω)'; rHint = '0 = default contact R (10 mΩ)'; }
+    else if (c.type === 'AM') rHint = '0 = ideal ammeter (no burden)';
+    else if (c.type === 'VM'){ rLabel = 'Input R (Ω)'; rHint = '0 = ideal voltmeter (no loading)'; }
+    html += '<div class="row" style="margin-top:8px"><label>' + rLabel + '</label></div>';
+    html += '<input type="text" id="rIntInput" value="' + escAttr(fmtInput(c.rInternal)) + '">';
+    html += '<div id="rIntHint">' + (c.rInternal > 0 ? eng(c.rInternal, 'Ω') : rHint) + '</div>';
+  }
+
+  html += '<div class="insp-live" id="inspLive"></div>';
+  html += '<div class="row" style="margin-top:10px">';
+  if (!isGnd){
+    html += '<button id="rotSel" style="background:#1d2733;border:1px solid #2f4054;color:#cfe0f0;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit">Rotate</button>';
+  }
+  html += '<button id="delSel" style="background:#3a1f26;border:1px solid #6d2f3d;color:#ffb3c0;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit">Delete</button></div>';
+  el.innerHTML = html;
+
+  const lbl = document.getElementById('lblInput');
+  lbl.onchange = () => {
+    const v = lbl.value.trim();
+    if (v) c.label = v; else lbl.value = c.label;
+    updateLive();
+  };
+  lbl.onkeydown = (e) => { if (e.key === 'Enter') lbl.blur(); };
+
+  if (c.type === 'SW'){
+    document.getElementById('toggleSwBtn').onclick = () => toggleSwitch(c);
+  }
+
+  if (editable){
+    const inp  = document.getElementById('valInput');
+    const hint = document.getElementById('valHint');
+    const problem = v => {
+      if (v === null || !isFinite(v)) return 'invalid number';
+      if (c.type !== 'V' && v <= 0)   return 'must be > 0';
+      return null;
+    };
+    inp.oninput = () => {
+      const v = parseValueStrict(inp.value);
+      const err = problem(v);
+      if (err){ hint.textContent = '⚠ ' + err; hint.classList.add('err'); }
+      else    { hint.textContent = eng(v, info.unit); hint.classList.remove('err'); }
+    };
+    inp.onchange = () => {
+      const v = parseValueStrict(inp.value);
+      if (problem(v) !== null){
+        inp.value = fmtInput(c.value);
+        hint.textContent = eng(c.value, info.unit);
+        hint.classList.remove('err');
+        return;
+      }
+      c.value = v;
+      inp.value = fmtInput(v);
+      hint.textContent = eng(v, info.unit);
+      hint.classList.remove('err');
+      netDirty = true;
+      resetTimeline();
+    };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') inp.blur(); };
+  }
+
+  if (hasRInt){
+    const rInp  = document.getElementById('rIntInput');
+    const rHint = document.getElementById('rIntHint');
+    const rProblem = v => {
+      if (v === null || !isFinite(v)) return 'invalid number';
+      if (v < 0) return 'must be ≥ 0';
+      return null;
+    };
+    rInp.oninput = () => {
+      const v = parseValueStrict(rInp.value);
+      const err = rProblem(v);
+      if (err){ rHint.textContent = '⚠ ' + err; rHint.classList.add('err'); }
+      else {
+        rHint.textContent = (v > 0) ? eng(v, 'Ω') : '0 = default / ideal';
+        rHint.classList.remove('err');
+      }
+    };
+    rInp.onchange = () => {
+      const v = parseValueStrict(rInp.value);
+      if (rProblem(v) !== null){
+        rInp.value = fmtInput(c.rInternal);
+        rHint.textContent = (c.rInternal > 0) ? eng(c.rInternal, 'Ω') : '0 = default / ideal';
+        rHint.classList.remove('err');
+        return;
+      }
+      c.rInternal = v;
+      rInp.value = fmtInput(v);
+      rHint.textContent = (v > 0) ? eng(v, 'Ω') : '0 = default / ideal';
+      rHint.classList.remove('err');
+      netDirty = true;
+      resetTimeline();
+    };
+    rInp.onkeydown = (e) => { if (e.key === 'Enter') rInp.blur(); };
+  }
+
+  if (!isGnd){
+    document.getElementById('rotSel').onclick = rotateAction;
+  }
+  document.getElementById('delSel').onclick = () => deleteElement(selected);
+
+  inspLiveEl = document.getElementById('inspLive');
+  refreshInspectorLive();
+}
+
+/* ============================================================
+   LIVE VALUES
+   ============================================================ */
+let lastReadout = 0;
+function updateLive(){
+  const el = document.getElementById('live');
+  if (comps.length === 0){
+    el.innerHTML = '<div class="muted">No components</div>';
+    return;
+  }
+  let rows = '';
+  for (const c of comps){
+    if (c.type === 'GND') continue;
+    let name = c.label;
+    if (c.type === 'SW') name += c.closed ? ' [C]' : ' [O]';
+    rows += '<tr data-id="' + c.id + '">' +
+              '<td>' + escAttr(name) + '</td>' +
+              '<td class="num">' + eng(c._v || 0, 'V') + '</td>' +
+              '<td class="num">' + eng(c._i || 0, 'A') + '</td></tr>';
+  }
+  el.innerHTML =
+    '<table><tr><th>Part</th><th style="text-align:right">Voltage</th>' +
+    '<th style="text-align:right">Current</th></tr>' + rows + '</table>' +
+    '<div class="muted" style="margin-top:8px">t = ' + simTime.toFixed(4) + ' s' +
+    (scrubIdx >= 0 ? ' · <b style="color:#ffd77e">rewound</b>' : '') + '</div>';
+
+  el.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.onclick = () => {
+      const comp = comps.find(x => x.id === +tr.dataset.id);
+      if (!comp) return;
+      setTool('select');
+      selected = { kind:'comp', comp };
+      updateInspector();
+    };
+  });
+}
+
+/* ============================================================
+   SPEED SLIDER
+   ============================================================ */
+function setSpeed(val){
+  const spd = Math.pow(10, (val - 50) / 25);
+  speed = Math.max(0.01, Math.min(100, spd));
+  let txt;
+  if (speed < 0.1)      txt = speed.toFixed(3);
+  else if (speed < 10)  txt = speed.toFixed(2);
+  else                  txt = speed.toFixed(1);
+  speedValEl.textContent = txt + '×';
+}
+
+/* ============================================================
+   KEYBOARD — new hotkey scheme
+   ============================================================ */
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key;
+
+  /* Tools */
+  if      (k === 's' || k === 'S'){ setTool('select'); }
+  else if (k === 'w' || k === 'W'){ setTool('wire'); }
+  else if (k === 'h' || k === 'H'){ setTool('pan'); }
+  else if (k === 'e' || k === 'E'){ setTool('erase'); }
+
+  /* Insert components — mnemonic letters (primary) or numbers (alternate) */
+  else if (k === 'r' || k === 'R' || k === '1'){ setTool('R'); }
+  else if (k === 'c' || k === 'C' || k === '2'){ setTool('C'); }
+  else if (k === 'l' || k === 'L' || k === '3'){ setTool('L'); }
+  else if (k === 'b' || k === 'B' || k === '4'){ setTool('V'); }   // battery
+  else if (k === 't' || k === 'T' || k === '5'){ setTool('SW'); }
+  else if (k === 'a' || k === 'A' || k === '6'){ setTool('AM'); }
+  else if (k === 'v' || k === 'V' || k === '7'){ setTool('VM'); }
+  else if (k === 'g' || k === 'G' || k === '8'){ setTool('GND'); }
+
+  /* Actions */
+  else if (k === 'x' || k === 'X'){ rotateAction(); }
+  else if (k === 'Escape'){ selected = null; updateInspector(); }
+  else if (k === ' '){ e.preventDefault(); toggleRun(); }
+  else if (k === 'f' || k === 'F'){ fitView(); }
+  else if (k === '+' || k === '='){ zoomBy(1.2); }
+  else if (k === '-' || k === '_'){ zoomBy(1/1.2); }
+  else if (k === 'Delete' || k === 'Backspace'){
+    if (selected) deleteElement(selected);
+    e.preventDefault();
+  }
+});
+
+/* ============================================================
+   DEMO — RLC with switch, ammeter, voltmeter
+   ============================================================ */
+function loadDemo(){
+  comps.length = 0;
+  wires.length = 0;
+  nextId = 1;
+  simTime = 0; firstStep = true;
+
+  addComp('V',   10, 10, false, 5);
+  const sw = addComp('SW',  14,  8, true,  0);
+  sw.closed = true;
+  addComp('R',   18,  8, true,  5);
+  addComp('L',   26,  8, true,  0.05);
+  addComp('AM',  30,  8, true,  0);
+  addComp('C',   32, 13, false, 2e-5);
+  addComp('VM',  38, 13, false, 0);
+  addComp('GND', 20, 18, true,  0);
+
+  wires.push({ x1:10, y1: 8, x2:12, y2: 8 });
+  wires.push({ x1:16, y1: 8, x2:16, y2: 8 });
+  wires.push({ x1:20, y1: 8, x2:24, y2: 8 });
+  wires.push({ x1:32, y1: 8, x2:32, y2:11 });
+  wires.push({ x1:32, y1:11, x2:38, y2:11 });
+  wires.push({ x1:32, y1:15, x2:38, y2:15 });
+  wires.push({ x1:32, y1:15, x2:32, y2:18 });
+  wires.push({ x1:32, y1:18, x2:20, y2:18 });
+  wires.push({ x1:20, y1:18, x2:10, y2:18 });
+  wires.push({ x1:10, y1:18, x2:10, y2:12 });
+
+  netDirty = true;
+}
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+function frame(now){
+  if (!viewReady){
+    if (canvas.clientWidth > 0 && canvas.clientHeight > 0){
+      resize(); fitView(); viewReady = true;
+    }
+  } else {
+    resize();
+  }
+  if (running && comps.length > 0){
+    const steps = Math.min(MAX_STEPS, Math.round(BASE_STEPS * speed));
+    if (steps > 0){
+      const every = Math.max(1, Math.floor(steps / 3));
+      for (let i = 0; i < steps; i++){
+        simulateStep(DT);
+        if ((i + 1) % every === 0) pushSnapshot();
+      }
+    } else if (netDirty){
+      rebuildNetlist();
+    }
+  } else if (netDirty){
+    rebuildNetlist();
+  }
+  draw();
+  updateTimeUI();
+  if (now - lastReadout > 120){
+    lastReadout = now;
+    updateLive();
+    refreshInspectorLive();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+resize();
+loadDemo();
+setTool('select');
+setSpeed(parseFloat(speedEl.value));
+updateInspector();
+updateLive();
+resetTimeline();
+updateStatus();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
