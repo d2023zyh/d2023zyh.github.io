@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Visualizer #1 - Circuit</title>
+<title>Circuit Simulator — R / L / C / Switch / AC / DC</title>
 <style>
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -32,7 +32,7 @@
   }
   .menu-panel{
     display:none;position:absolute;top:100%;left:0;
-    min-width:250px;background:#1a2430;
+    min-width:260px;background:#1a2430;
     border:1px solid #2f4054;border-radius:6px;
     box-shadow:0 10px 30px #000a;
     padding:4px;z-index:100;margin-top:2px;
@@ -144,6 +144,119 @@
   #btnLive:hover{background:#17412f;border-color:#2a7a52}
   #btnLive.scrubbing{background:#3a2a12;border-color:#7a5a1f;color:#ffd77e}
   #tlHint{font-size:11px;color:#5b7288;white-space:nowrap}
+  #histInfo{
+    font-family:ui-monospace,monospace;font-size:11px;
+    color:#5b7288;white-space:nowrap;
+  }
+  #branchIndicator{
+    font-family:ui-monospace,monospace;font-size:11px;
+    color:#7ee2a8;white-space:nowrap;padding:0 6px;
+    border-left:1px solid #2b3949;
+  }
+
+  #warnBanner{
+    display:none;
+    position:absolute;
+    top:12px;left:12px;right:312px;
+    max-width:640px;
+    background:rgba(120, 20, 20, 0.96);
+    color:#fecaca;
+    padding:10px 14px;border-radius:8px;
+    font-size:12px;line-height:1.5;
+    box-shadow:0 6px 20px rgba(0,0,0,0.6);
+    z-index:30;border:1px solid #dc2626;
+    pointer-events:none;
+  }
+  #warnBanner.show{display:block}
+  #warnBanner .entry{display:block}
+  #warnBanner .entry + .entry{margin-top:3px}
+
+  #helpModal{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+    z-index:200;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  #helpModal.show{display:flex}
+  #helpBox{
+    background:#182231;border:1px solid #2f4054;border-radius:10px;
+    max-width:720px;max-height:85vh;overflow-y:auto;
+    padding:24px 28px;color:#cfe0f0;
+    position:relative;font-size:13px;line-height:1.7;
+    box-shadow:0 20px 60px #000d;
+  }
+  #helpBox h2{margin:0 0 14px;font-size:18px;color:#dbe4ee}
+  #helpBox h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    color:#7f97b0;margin:18px 0 6px;font-weight:600}
+  #helpBox p, #helpBox div{margin:4px 0}
+  #helpBox kbd{background:#0e141c;border:1px solid #2f4054;border-radius:4px;
+    padding:1px 5px;font-size:11px;color:#cfe0f0;font-family:ui-monospace,monospace}
+  #helpClose{
+    position:absolute;top:12px;right:14px;
+    background:transparent;border:none;color:#7f97b0;
+    font-size:24px;cursor:pointer;line-height:1;padding:0 4px;
+  }
+  #helpClose:hover{color:#ff8a9b}
+  .help-table{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:12px}
+  .help-table td{padding:4px 8px;border-bottom:1px solid #1c2733;vertical-align:top}
+  .help-table td:first-child{width:130px;color:#9fb8cf;font-family:ui-monospace,monospace;white-space:nowrap}
+
+  #gmModal{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+    z-index:210;align-items:center;justify-content:center;padding:20px;
+  }
+  #gmModal.show{display:flex}
+  #gmBox{
+    background:#182231;border:1px solid #2f4054;border-radius:10px;
+    max-width:560px;width:100%;max-height:85vh;overflow-y:auto;
+    padding:22px 24px;color:#cfe0f0;
+    box-shadow:0 20px 60px #000d;
+  }
+  #gmBox h3{margin:0 0 12px;font-size:16px;color:#dbe4ee}
+  #gmBody{font-size:13px;line-height:1.6;color:#b8c8d8;margin-bottom:14px}
+  #gmButtons{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  #gmButtons button{
+    padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;
+    border:1px solid #2f4054;background:#1d2733;color:#cfe0f0;transition:.12s;
+  }
+  #gmButtons button:hover{background:#26364a}
+  #gmButtons button.primary{background:#2f6feb;border-color:#5b93ff;color:#fff}
+  #gmButtons button.primary:hover{background:#3a7ef0}
+  #gmButtons button.danger{background:#3a1f26;border-color:#6d2f3d;color:#ffb3c0}
+  #gmButtons button.danger:hover{background:#4d2630}
+
+  /* Branch tree */
+  #gmBranchList{
+    max-height:340px;overflow-y:auto;margin:8px 0;
+    border:1px solid #24303f;border-radius:6px;background:#0e141c;
+  }
+  .gm-branch-row{
+    display:flex;align-items:center;gap:6px;
+    padding:6px 10px;font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    border-bottom:1px solid #1c2733;color:#cfe0f0;
+    min-height:30px;
+  }
+  .gm-branch-row:last-child{border-bottom:none}
+  .gm-branch-row.is-current{background:#1a2a3a}
+  .gm-branch-prefix{color:#3d5470;white-space:pre;flex:0 0 auto}
+  .gm-branch-name{flex:0 0 auto;font-weight:600}
+  .gm-branch-name.current{color:#7ee2a8}
+  .gm-branch-time{flex:1 1 auto;color:#5b7288;font-size:11px;text-align:right;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px}
+  .gm-branch-actions{display:flex;gap:4px;flex:0 0 auto}
+  .gm-branch-actions button{
+    background:transparent;border:1px solid #2f4054;
+    color:#9fb3c8;border-radius:4px;padding:1px 6px;
+    cursor:pointer;font-size:11px;font-family:inherit;line-height:1.5;
+  }
+  .gm-branch-actions button:hover{background:#2f4054;color:#cfe0f0}
+  .gm-branch-actions button.act-load{
+    background:#2f6feb;border-color:#5b93ff;color:#fff;
+  }
+  .gm-branch-actions button.act-load:hover{background:#3a7ef0}
+  .gm-branch-actions button.act-delete:hover{
+    background:#3a1f26;border-color:#6d2f3d;color:#ffb3c0;
+  }
 
   @media (max-width: 640px){
     #main{flex-direction:column}
@@ -154,9 +267,12 @@
     #cv{min-height:180px}
     .menu-status{display:none}
     #tlHint{display:none}
+    #branchIndicator{display:none}
     .speed-inline{padding:0 6px}
     .speed-inline .lbl{display:none}
     .speed-inline input[type=range]{width:90px}
+    #helpBox{padding:16px 18px}
+    #warnBanner{right:12px}
   }
 </style>
 </head>
@@ -166,9 +282,14 @@
   <div class="menu" data-menu="file">
     <button class="menu-btn">File</button>
     <div class="menu-panel">
+      <div class="menu-item" data-cmd="new">New circuit</div>
       <div class="menu-item" data-cmd="load-demo">Load demo circuit</div>
       <div class="menu-sep"></div>
-      <div class="menu-item danger" data-cmd="clear">Clear circuit</div>
+      <div class="menu-item" data-cmd="export">Export circuit…</div>
+      <div class="menu-item" data-cmd="import">Import circuit…</div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="save-branch">Save branch</div>
+      <div class="menu-item" data-cmd="load-branch">Load branch…<span class="kbd" id="branchCount"></span></div>
     </div>
   </div>
 
@@ -188,18 +309,20 @@
   <div class="menu" data-menu="insert">
     <button class="menu-btn">Insert</button>
     <div class="menu-panel">
-      <div class="menu-item" data-cmd="insert-R">Resistor<span class="kbd">R · 1</span></div>
-      <div class="menu-item" data-cmd="insert-C">Capacitor<span class="kbd">C · 2</span></div>
-      <div class="menu-item" data-cmd="insert-L">Inductor<span class="kbd">L · 3</span></div>
-      <div class="menu-item" data-cmd="insert-V">Battery<span class="kbd">B · 4</span></div>
-      <div class="menu-item" data-cmd="insert-SW">Switch<span class="kbd">T · 5</span></div>
+      <div class="menu-item" data-cmd="insert-R">Resistor<span class="kbd">R</span></div>
+      <div class="menu-item" data-cmd="insert-C">Capacitor<span class="kbd">C</span></div>
+      <div class="menu-item" data-cmd="insert-L">Inductor<span class="kbd">L</span></div>
+      <div class="menu-item" data-cmd="insert-V">Battery<span class="kbd">B</span></div>
+      <div class="menu-item" data-cmd="insert-SW">Switch<span class="kbd">T</span></div>
       <div class="menu-sep"></div>
-      <div class="menu-item" data-cmd="insert-VS">AC Voltage<span class="kbd">Y · 9</span></div>
-      <div class="menu-item" data-cmd="insert-CS">AC Current<span class="kbd">Z · 0</span></div>
+      <div class="menu-item" data-cmd="insert-VS">AC Voltage<span class="kbd">Y</span></div>
+      <div class="menu-item" data-cmd="insert-CS">AC Current<span class="kbd">Z</span></div>
+      <div class="menu-item" data-cmd="insert-IDC">DC Current (steady)<span class="kbd">D</span></div>
       <div class="menu-sep"></div>
-      <div class="menu-item" data-cmd="insert-AM">Ammeter<span class="kbd">A · 6</span></div>
-      <div class="menu-item" data-cmd="insert-VM">Voltmeter<span class="kbd">V · 7</span></div>
-      <div class="menu-item" data-cmd="insert-GND">Ground<span class="kbd">G · 8</span></div>
+      <div class="menu-item" data-cmd="insert-AM">Ammeter<span class="kbd">A</span></div>
+      <div class="menu-item" data-cmd="insert-VM">Voltmeter<span class="kbd">V</span></div>
+      <div class="menu-item" data-cmd="insert-GND">Ground<span class="kbd">G</span></div>
+      <div class="menu-item" data-cmd="insert-JCT">Junction<span class="kbd">J</span></div>
     </div>
   </div>
 
@@ -208,6 +331,9 @@
     <div class="menu-panel">
       <div class="menu-item" data-cmd="toggle-run">Run / Pause<span class="kbd">Space</span></div>
       <div class="menu-item" data-cmd="reset">Reset simulation</div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" data-cmd="history-limit">History limit…<span class="kbd" id="histLimitLabel"></span></div>
+      <div class="menu-item" data-cmd="branch-mode">Branch behavior…<span class="kbd" id="branchModeLabel"></span></div>
     </div>
   </div>
 
@@ -218,6 +344,13 @@
       <div class="menu-item" data-cmd="zoom-out">Zoom out<span class="kbd">-</span></div>
       <div class="menu-sep"></div>
       <div class="menu-item" data-cmd="fit">Fit view<span class="kbd">F</span></div>
+    </div>
+  </div>
+
+  <div class="menu" data-menu="help">
+    <button class="menu-btn">Help</button>
+    <div class="menu-panel">
+      <div class="menu-item" data-cmd="show-help">How to use<span class="kbd">?</span></div>
     </div>
   </div>
 
@@ -246,50 +379,107 @@
       <div id="live"><div class="muted">No components</div></div>
     </div>
     <div class="card">
-      <h3>How to use</h3>
+      <h3>Quick reference</h3>
       <div class="muted" style="line-height:1.7">
-        <b>Insert</b> a part from the menu (or press its letter), then click the canvas.<br>
-        <b>Wire</b>: drag between two points.<br>
-        <b>Select</b>: click to select, drag to move.<br>
-        <b>Pan</b>: drag to pan &nbsp;·&nbsp; <b>wheel</b> to zoom.<br>
-        Right‑click anything to delete it.<br>
+        Open <b>Help → How to use</b> for the full guide.<br>
         <b>Double‑click</b> a part to edit its value.<br>
         <b>Double‑click</b> a switch to toggle it.<br>
-        AC sources have adjustable <b>amplitude</b>,
-        <b>frequency</b> (Hz) and <b>phase</b> (°).<br>
-        Simulation starts <b>paused</b> — press Space or Run.<br>
-        <br>
-        <b>Hotkeys</b><br>
-        <kbd>S</kbd> select &nbsp; <kbd>W</kbd> wire &nbsp;
-        <kbd>H</kbd> pan &nbsp; <kbd>E</kbd> erase<br>
-        <kbd>R</kbd> resistor &nbsp; <kbd>C</kbd> capacitor &nbsp;
-        <kbd>L</kbd> inductor &nbsp; <kbd>B</kbd> battery<br>
-        <kbd>T</kbd> switch &nbsp; <kbd>Y</kbd> AC voltage &nbsp;
-        <kbd>Z</kbd> AC current<br>
-        <kbd>A</kbd> ammeter &nbsp; <kbd>V</kbd> voltmeter &nbsp;
-        <kbd>G</kbd> ground<br>
-        <kbd>1</kbd>–<kbd>0</kbd> same as above (numbers, 0 = AC current)<br>
-        <kbd>X</kbd> rotate &nbsp; <kbd>Del</kbd> delete &nbsp;
-        <kbd>F</kbd> fit &nbsp; <kbd>Space</kbd> run/pause<br>
-        <kbd>+</kbd>/<kbd>-</kbd> zoom &nbsp; <kbd>Esc</kbd> deselect
+        <b>Right‑click</b> anything to delete it.<br>
+        <b>Junction</b> (J) joins crossing wires.<br>
+        Simulation starts <b>paused</b> — press <kbd>Space</kbd> to run.
       </div>
     </div>
   </aside>
+  <div id="warnBanner"></div>
 </div>
 
 <div id="timeline">
   <button id="btnLive">⏵ Live</button>
   <input type="range" id="timeSlider" min="0" max="0" step="1" value="0">
   <span id="timeLabel">t = 0.0000 s</span>
+  <span id="histInfo">hist 1</span>
+  <span id="branchIndicator">on: Main</span>
   <span id="tlHint">drag to rewind</span>
+</div>
+
+<input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
+
+<div id="helpModal">
+  <div id="helpBox">
+    <button id="helpClose">×</button>
+    <h2>How to use</h2>
+    <p>Pick a part from the <b>Insert</b> menu (or press its letter), then click the canvas to place it. Select parts with the <b>Select</b> tool; drag to move, <b>double‑click</b> to edit a value, right‑click to delete.</p>
+
+    <h3>Tools</h3>
+    <table class="help-table">
+      <tr><td><kbd>S</kbd></td><td>Select — click to select, drag to move</td></tr>
+      <tr><td><kbd>W</kbd></td><td>Wire — drag from one point to another</td></tr>
+      <tr><td><kbd>H</kbd></td><td>Pan — drag the canvas, or use the mouse wheel to zoom</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Erase — click to delete anything</td></tr>
+    </table>
+
+    <h3>Components</h3>
+    <table class="help-table">
+      <tr><td><kbd>R</kbd></td><td>Resistor</td></tr>
+      <tr><td><kbd>C</kbd></td><td>Capacitor</td></tr>
+      <tr><td><kbd>L</kbd></td><td>Inductor</td></tr>
+      <tr><td><kbd>B</kbd></td><td>Battery (DC voltage)</td></tr>
+      <tr><td><kbd>T</kbd></td><td>Switch (double‑click to toggle)</td></tr>
+      <tr><td><kbd>Y</kbd></td><td>AC Voltage source (sine)</td></tr>
+      <tr><td><kbd>Z</kbd></td><td>AC Current source (sine)</td></tr>
+      <tr><td><kbd>D</kbd></td><td>DC Current source — steady current output</td></tr>
+      <tr><td><kbd>A</kbd></td><td>Ammeter (ideal short)</td></tr>
+      <tr><td><kbd>V</kbd></td><td>Voltmeter (ideal open)</td></tr>
+      <tr><td><kbd>G</kbd></td><td>Ground (reference node)</td></tr>
+      <tr><td><kbd>J</kbd></td><td>Junction — explicitly joins crossing wires</td></tr>
+    </table>
+
+    <h3>Wire crossings</h3>
+    <p>Mid‑segment wire crossings do <b>not</b> connect by default. Place a <b>Junction</b> at the crossing point to force a connection.</p>
+
+    <h3>Open circuits</h3>
+    <p>Components in an open branch report exactly 0 A. Sub‑nanoamp residual currents from the internal solver conditioning are suppressed to zero, so opening a switch really does stop current everywhere downstream.</p>
+
+    <h3>Short circuits</h3>
+    <p>A red banner appears when the sim detects a shorted current source, a shorted voltage source, a singular matrix, or numerical overflow. Fixing the issue clears the banner.</p>
+
+    <h3>History & branches</h3>
+    <p>The <b>timeline</b> stores every recorded state. Its maximum length is set in <b>Simulate → History limit…</b> (presets include "unlimited"). When you press <b>Go Live</b> from a rewound position, the behavior is controlled by <b>Simulate → Branch behavior…</b>:</p>
+    <ul style="margin:4px 0 8px 18px;padding:0;color:#b8c8d8">
+      <li><b>Auto-create</b> (default): saves the current state as a new branch, then resumes.</li>
+      <li><b>Discard silently</b>: throws away future history without saving.</li>
+      <li><b>Ask</b>: prompts before discarding.</li>
+    </ul>
+    <p><b>File → Save branch</b> adds a manual snapshot. <b>File → Load branch…</b> shows the tree of branches; each row has <b>Load</b>, rename (<b>✎</b>), copy (<b>⧉</b>), and delete (<b>✕</b>) actions. Deleting a branch re‑parents its children to its parent so nothing is orphaned. Branches are included in exports.</p>
+    <p><b>New circuit</b> clears the circuit <b>and</b> every saved branch.</p>
+
+    <h3>Export / Import</h3>
+    <p><b>File → Export circuit</b> saves the complete app state (parts, wires, timeline, branches, view) to JSON. <b>File → Import circuit</b> restores it.</p>
+
+    <h3>Other hotkeys</h3>
+    <table class="help-table">
+      <tr><td><kbd>X</kbd></td><td>Rotate selected part</td></tr>
+      <tr><td><kbd>Del</kbd> / <kbd>Backspace</kbd></td><td>Delete selected</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Deselect / close modal</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Fit view</td></tr>
+      <tr><td><kbd>+</kbd> / <kbd>−</kbd></td><td>Zoom in / out</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>Run / Pause</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Open help</td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="gmModal">
+  <div id="gmBox">
+    <h3 id="gmTitle"></h3>
+    <div id="gmBody"></div>
+    <div id="gmButtons"></div>
+  </div>
 </div>
 
 <script>
 "use strict";
 
-/* ============================================================
-   CONSTANTS & STATE
-   ============================================================ */
 const GRID = 20;
 const HALF = 2;
 const DT   = 1e-4;
@@ -297,29 +487,42 @@ const BASE_STEPS = 150;
 const MAX_STEPS  = 20000;
 const MIN_SCALE  = 0.2;
 const MAX_SCALE  = 6;
-const MAX_HIST   = 3000;
-const DEFAULT_RSER = 1e-3;   /* implicit series R for V/VS/AM (short-circuit guard) */
+const HARD_HIST_CAP = 100000;
+const DEFAULT_RSER = 1e-3;
+/* Smaller ground leak → smaller artificial currents in floating nodes. */
+const GROUND_LEAK = 1e-12;
+const CURRENT_CLAMP = 1e-9;
+const OVERVOLT_HI = 1e6;
+const OVERVOLT_LO = 1e5;
+
+let MAX_HIST = 3000;
 
 const canvas = document.getElementById('cv');
 const ctx    = canvas.getContext('2d');
 let DPR = window.devicePixelRatio || 1;
 
 const TYPE_INFO = {
-  R:   { name:'Resistor',     unit:'Ω', def:1000, color:'#ffb454' },
-  C:   { name:'Capacitor',    unit:'F', def:1e-4, color:'#4fd1c5' },
-  L:   { name:'Inductor',     unit:'H', def:0.1,  color:'#c084fc' },
-  V:   { name:'Battery',      unit:'V', def:5,    color:'#f87171' },
-  VS:  { name:'AC Voltage',   unit:'V', def:5,    color:'#ec4899' },
-  CS:  { name:'AC Current',   unit:'A', def:0.1,  color:'#a855f7' },
-  SW:  { name:'Switch',       unit:'',  def:0,    color:'#e2b04a' },
-  AM:  { name:'Ammeter',      unit:'A', def:0,    color:'#fbbf24' },
-  VM:  { name:'Voltmeter',    unit:'V', def:0,    color:'#34d399' },
-  GND: { name:'Ground',       unit:'',  def:0,    color:'#94a3b8' },
+  R:   { name:'Resistor',      unit:'Ω', def:1000, color:'#ffb454' },
+  C:   { name:'Capacitor',     unit:'F', def:1e-4, color:'#4fd1c5' },
+  L:   { name:'Inductor',      unit:'H', def:0.1,  color:'#c084fc' },
+  V:   { name:'Battery',       unit:'V', def:5,    color:'#f87171' },
+  VS:  { name:'AC Voltage',    unit:'V', def:5,    color:'#ec4899' },
+  CS:  { name:'AC Current',    unit:'A', def:0.1,  color:'#a855f7' },
+  IDC: { name:'DC Current',    unit:'A', def:0.1,  color:'#f472b6' },
+  SW:  { name:'Switch',        unit:'',  def:0,    color:'#e2b04a' },
+  AM:  { name:'Ammeter',       unit:'A', def:0,    color:'#fbbf24' },
+  VM:  { name:'Voltmeter',     unit:'V', def:0,    color:'#34d399' },
+  GND: { name:'Ground',        unit:'',  def:0,    color:'#94a3b8' },
+  JCT: { name:'Junction',      unit:'',  def:0,    color:'#38bdf8' },
 };
-const HAS_VALUE = { R:1, C:1, L:1, V:1, VS:1, CS:1 };
+const HAS_VALUE = { R:1, C:1, L:1, V:1, VS:1, CS:1, IDC:1 };
 const HAS_RINT  = { C:1, L:1, V:1, SW:1, AM:1, VM:1, VS:1 };
 const IS_AC     = { VS:1, CS:1 };
-const IS_VSRC   = { V:1, VS:1, AM:1 };   /* types that get an implicit series R floor */
+const IS_VSRC   = { V:1, VS:1, AM:1 };
+const IS_CSRC   = { CS:1, IDC:1 };
+/* Types whose displayed current is clamped to 0 when below CURRENT_CLAMP.
+   Current sources are excluded so their user-set values are always shown. */
+const IS_CLAMPABLE = { R:1, C:1, L:1, V:1, VS:1, AM:1, VM:1, SW:1 };
 
 let comps = [];
 let wires = [];
@@ -348,11 +551,36 @@ let viewReady = false;
 let hist = [];
 let scrubIdx = -1;
 
+/* Branches */
+let branches = [];
+let branchCounter = 0;
+let nextBranchId = 1;
+let currentBranchId = 0;               // 0 = Main
+let branchMode = 'auto';               // 'auto' | 'discard' | 'prompt'
+
+/* Sim errors */
+let lastSimError = null;
+let lastOverVoltage = 0;
+let warningCacheKey = null;
+
 const timeSlider   = document.getElementById('timeSlider');
 const timeLabel    = document.getElementById('timeLabel');
+const histInfo     = document.getElementById('histInfo');
+const branchIndicator = document.getElementById('branchIndicator');
 const btnLive      = document.getElementById('btnLive');
 const speedEl      = document.getElementById('speed');
 const speedValEl   = document.getElementById('speedVal');
+const helpModal    = document.getElementById('helpModal');
+const helpClose    = document.getElementById('helpClose');
+const warnBanner   = document.getElementById('warnBanner');
+const importFileInput = document.getElementById('importFileInput');
+const gmModal      = document.getElementById('gmModal');
+const gmTitle      = document.getElementById('gmTitle');
+const gmBody       = document.getElementById('gmBody');
+const gmButtons    = document.getElementById('gmButtons');
+const histLimitLabel = document.getElementById('histLimitLabel');
+const branchCount  = document.getElementById('branchCount');
+const branchModeLabel = document.getElementById('branchModeLabel');
 
 /* ============================================================
    CANVAS SIZING
@@ -389,6 +617,7 @@ function fitView(){
   for (const c of comps){
     let x1, y1, x2, y2;
     if (c.type === 'GND'){ x1 = c.cx - 1; y1 = c.cy - 0.5; x2 = c.cx + 1; y2 = c.cy + 1.5; }
+    else if (c.type === 'JCT'){ x1 = c.cx - 0.4; y1 = c.cy - 0.4; x2 = c.cx + 0.4; y2 = c.cy + 0.4; }
     else if (c.horiz){ x1 = c.cx - 2.4; y1 = c.cy - 1.4; x2 = c.cx + 2.4; y2 = c.cy + 1.4; }
     else { x1 = c.cx - 1.4; y1 = c.cy - 2.4; x2 = c.cx + 1.4; y2 = c.cy + 2.4; }
     if (x1 < minX) minX = x1; if (y1 < minY) minY = y1;
@@ -472,7 +701,7 @@ function escAttr(s){
    GEOMETRY
    ============================================================ */
 function compTerminals(c){
-  if (c.type === 'GND') return [[c.cx, c.cy], null];
+  if (c.type === 'GND' || c.type === 'JCT') return [[c.cx, c.cy], null];
   if (c.horiz) return [[c.cx - HALF, c.cy], [c.cx + HALF, c.cy]];
   return [[c.cx, c.cy - HALF], [c.cx, c.cy + HALF]];
 }
@@ -480,6 +709,7 @@ function compBounds(c){
   const p = gridToScreen(c.cx, c.cy);
   const s = view.scale;
   if (c.type === 'GND') return { x: p.x - 20*s, y: p.y - 8*s, w: 40*s, h: 36*s };
+  if (c.type === 'JCT') return { x: p.x - 8*s, y: p.y - 8*s, w: 16*s, h: 16*s };
   if (c.horiz) return { x: p.x - 44*s, y: p.y - 20*s, w: 88*s, h: 40*s };
   return { x: p.x - 20*s, y: p.y - 44*s, w: 40*s, h: 88*s };
 }
@@ -516,20 +746,9 @@ function hitTest(mx,my){
 
 /* ============================================================
    EFFECTIVE INTERNAL RESISTANCE
-   ------------------------------------------------------------
-   V, VS, AM get an implicit 1 mΩ series R when the user
-   leaves rInternal = 0. This is a "numerical short-circuit
-   guard": an ideal 0 V / 0 V-Δ branch imposes an absolute
-   voltage constraint that makes the MNA matrix singular when
-   that branch is externally shorted (e.g. by a wire or a
-   closed switch). The 1 mΩ is negligible for normal circuits
-   (0.02 % error on a 5 Ω load) but keeps the matrix
-   well-conditioned even under a hard short.
    ============================================================ */
 function effectiveInternalR(c){
-  if (IS_VSRC[c.type]){
-    return (c.rInternal > 0) ? c.rInternal : DEFAULT_RSER;
-  }
+  if (IS_VSRC[c.type]) return (c.rInternal > 0) ? c.rInternal : DEFAULT_RSER;
   return (c.rInternal > 0) ? c.rInternal : 0;
 }
 function needsSeriesInternal(c){
@@ -555,6 +774,7 @@ function rebuildNetlist(){
   for (const w of wires) uni(pid(w.x1,w.y1), pid(w.x2,w.y2));
   const entries = [];
   for (const c of comps){
+    if (c.type === 'JCT') continue;
     const [t1,t2] = compTerminals(c);
     const p1 = pid(t1[0], t1[1]);
     const p2 = t2 ? pid(t2[0], t2[1]) : null;
@@ -563,7 +783,7 @@ function rebuildNetlist(){
       pInt = parent.length;
       parent.push(pInt);
     }
-    entries.push({ c, p1, p2, pInt });
+    entries.push({ c, p1, p2, pInt, isolated: false });
   }
   for (const w of wires){
     const base = idx.get(w.x1 + ',' + w.y1);
@@ -575,6 +795,28 @@ function rebuildNetlist(){
   }
   const gndPts = entries.filter(e => e.c.type === 'GND').map(e => e.p1);
   for (let i = 1; i < gndPts.length; i++) uni(gndPts[0], gndPts[i]);
+
+  for (const c of comps){
+    if (c.type !== 'JCT') continue;
+    const basePid = pid(c.cx, c.cy);
+    for (const w of wires){
+      if (onSegment(c.cx, c.cy, w)){
+        uni(basePid, pid(w.x1, w.y1));
+        uni(basePid, pid(w.x2, w.y2));
+      }
+    }
+    for (const other of entries){
+      if (other.c.type === 'GND'){
+        if (other.c.cx === c.cx && other.c.cy === c.cy)
+          uni(basePid, pid(other.c.cx, other.c.cy));
+      } else {
+        const [t1, t2] = compTerminals(other.c);
+        if (t1[0] === c.cx && t1[1] === c.cy) uni(basePid, pid(t1[0], t1[1]));
+        if (t2 && t2[0] === c.cx && t2[1] === c.cy) uni(basePid, pid(t2[0], t2[1]));
+      }
+    }
+  }
+
   const nodeMap = new Map();
   function nodeOf(p){
     const r = find(p);
@@ -590,8 +832,42 @@ function rebuildNetlist(){
   let ref = 0;
   const g = entries.find(e => e.c.type === 'GND');
   if (g) ref = g.a;
+
+  for (const e of entries){
+    if (!IS_VSRC[e.c.type]) continue;
+    e.isolated = !hasExternalPath(e, entries);
+  }
+
   netlist = { entries, n, ref };
   netDirty = false;
+}
+
+function conductsCurrently(c){
+  if (c.type === 'SW' && !c.closed) return false;
+  if (c.type === 'VM' && !(c.rInternal > 0)) return false;
+  return true;
+}
+function hasExternalPath(entry, entries){
+  if (entry.a === entry.b) return true;
+  const visited = new Set([entry.a]);
+  const queue = [entry.a];
+  while (queue.length){
+    const node = queue.shift();
+    for (const other of entries){
+      if (other === entry) continue;
+      if (!conductsCurrently(other.c)) continue;
+      const nodes = [other.a, other.b, other.int].filter(x => x !== null && x !== undefined);
+      let matched = false;
+      for (let i = 0; i < nodes.length; i++){
+        if (nodes[i] === node){ matched = true; break; }
+      }
+      if (!matched) continue;
+      for (const n2 of nodes){
+        if (!visited.has(n2)){ visited.add(n2); queue.push(n2); }
+      }
+    }
+  }
+  return visited.has(entry.b);
 }
 
 /* ============================================================
@@ -650,7 +926,6 @@ function simulateStep(dt){
   if (n === 0) return;
 
   const tNew = simTime + dt;
-
   const nIdx = node => (node === ref) ? -1 : (node < ref ? node : node - 1);
 
   let vsCount = 0;
@@ -667,7 +942,7 @@ function simulateStep(dt){
     if (ia >= 0 && ib >= 0){ A[ia][ib] -= G; A[ib][ia] -= G; }
   }
 
-  for (let i = 0; i < n-1; i++) A[i][i] += 1e-9;
+  for (let i = 0; i < n-1; i++) A[i][i] += GROUND_LEAK;
 
   let k = n - 1;
   for (const e of entries){
@@ -679,49 +954,43 @@ function simulateStep(dt){
 
     if (c.type === 'R'){
       stampG(ia, mainB, 1 / Math.max(c.value, 1e-6));
-
     } else if (c.type === 'SW'){
       const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
       const G  = c.closed ? (1 / Rc) : 1e-12;
       stampG(ia, mainB, G);
-
     } else if (c.type === 'C'){
       const G   = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
       const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
       stampG(ia, mainB, G);
       if (ia    >= 0) b[ia]    += Ieq;
       if (mainB >= 0) b[mainB] -= Ieq;
-
     } else if (c.type === 'L'){
       const G   = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
       const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
       stampG(ia, mainB, G);
       if (ia    >= 0) b[ia]    -= Ieq;
       if (mainB >= 0) b[mainB] += Ieq;
-
     } else if (c.type === 'V' || c.type === 'AM' || c.type === 'VS'){
       const kk = k++;
       if (ia    >= 0){ A[ia][kk]    += 1; A[kk][ia]    += 1; }
       if (mainB >= 0){ A[mainB][kk] -= 1; A[kk][mainB] -= 1; }
-      if (c.type === 'V'){
-        b[kk] = c.value;
-      } else if (c.type === 'VS'){
+      if (c.type === 'V'){ b[kk] = c.value; }
+      else if (c.type === 'VS'){
         const omega = 2 * Math.PI * (c.freq || 100);
         const phase = (c.phase || 0) * Math.PI / 180;
         b[kk] = c.value * Math.sin(omega * tNew + phase);
+      } else { b[kk] = 0; }
+    } else if (c.type === 'CS' || c.type === 'IDC'){
+      let I;
+      if (c.type === 'CS'){
+        const omega = 2 * Math.PI * (c.freq || 100);
+        const phase = (c.phase || 0) * Math.PI / 180;
+        I = c.value * Math.sin(omega * tNew + phase);
       } else {
-        b[kk] = 0;
+        I = c.value;
       }
-
-    } else if (c.type === 'CS'){
-      // Current source: I flows OUT of terminal a (+) into the external circuit,
-      // returns to terminal b (−). Stamp: inject +I at a, −I at b.
-      const omega = 2 * Math.PI * (c.freq || 100);
-      const phase = (c.phase || 0) * Math.PI / 180;
-      const I = c.value * Math.sin(omega * tNew + phase);
       if (ia >= 0) b[ia] += I;
       if (ib >= 0) b[ib] -= I;
-
     } else if (c.type === 'VM'){
       if (c.rInternal > 0) stampG(ia, ib, 1 / c.rInternal);
     }
@@ -732,13 +1001,31 @@ function simulateStep(dt){
   }
 
   const x = solveLinear(A, b, m);
-  if (!x) return;
+  if (!x){
+    lastSimError = 'Singular circuit — simulation halted.';
+    return;
+  }
+  for (let i = 0; i < m; i++){
+    if (!isFinite(x[i])){
+      lastSimError = 'Numerical overflow — check for short circuits.';
+      return;
+    }
+  }
+  lastSimError = null;
 
   const V = new Float64Array(n);
   for (let i = 0; i < n; i++){
     const mi = nIdx(i);
     V[i] = (mi < 0) ? 0 : x[mi];
   }
+
+  let maxV = 0;
+  for (let i = 0; i < n; i++){
+    const absV = Math.abs(V[i]);
+    if (absV > maxV) maxV = absV;
+  }
+  if (maxV > OVERVOLT_HI){ if (maxV > lastOverVoltage) lastOverVoltage = maxV; }
+  else if (maxV < OVERVOLT_LO){ lastOverVoltage = 0; }
 
   k = n - 1;
   for (const e of entries){
@@ -751,47 +1038,103 @@ function simulateStep(dt){
 
     if (c.type === 'R'){
       c._v = vTerminal;  c._i = vTerminal / Math.max(c.value, 1e-6);
-
     } else if (c.type === 'SW'){
       const Rc = (c.rInternal > 0) ? c.rInternal : 1e-2;
       const G  = c.closed ? (1 / Rc) : 1e-12;
       c._v = vTerminal;  c._i = G * vTerminal;
-
     } else if (c.type === 'C'){
       const G   = (useBE ? 1 : 2) * Math.max(c.value, 1e-12) / dt;
       const Ieq = G * (c.vPrev || 0) + (useBE ? 0 : (c.iPrev || 0));
       c._v = vTerminal;
       c._i = G * vElement - Ieq;
-      c.vPrev = vElement;
-      c.iPrev = c._i;
-
+      c.vPrev = vElement; c.iPrev = c._i;
     } else if (c.type === 'L'){
       const G   = dt / ((useBE ? 1 : 2) * Math.max(c.value, 1e-9));
       const Ieq = (c.iPrev || 0) + (useBE ? 0 : G * (c.vPrev || 0));
       c._v = vTerminal;
       c._i = G * vElement + Ieq;
-      c.vPrev = vElement;
-      c.iPrev = c._i;
-
+      c.vPrev = vElement; c.iPrev = c._i;
     } else if (c.type === 'V' || c.type === 'VS' || c.type === 'AM'){
       const iSrc = x[k++];
       c._v = vTerminal;
-      c._i = (c.type === 'AM') ? iSrc : -iSrc;
-
-    } else if (c.type === 'CS'){
-      const omega = 2 * Math.PI * (c.freq || 100);
-      const phase = (c.phase || 0) * Math.PI / 180;
-      c._v = vTerminal;
-      c._i = c.value * Math.sin(omega * tNew + phase);
-
-    } else { // VM
+      if (e.isolated || Math.abs(iSrc) < CURRENT_CLAMP) c._i = 0;
+      else c._i = (c.type === 'AM') ? iSrc : -iSrc;
+    } else if (c.type === 'CS' || c.type === 'IDC'){
+      let I;
+      if (c.type === 'CS'){
+        const omega = 2 * Math.PI * (c.freq || 100);
+        const phase = (c.phase || 0) * Math.PI / 180;
+        I = c.value * Math.sin(omega * tNew + phase);
+      } else { I = c.value; }
+      c._v = vTerminal;  c._i = I;
+    } else {
       c._v = vTerminal;
       c._i = (c.rInternal > 0) ? vTerminal / c.rInternal : 0;
     }
   }
 
+  /* Clamp residual currents from floating-node leaks to zero. */
+  for (const c of comps){
+    if (IS_CSRC[c.type]) continue;
+    if (Math.abs(c._i) < CURRENT_CLAMP) c._i = 0;
+  }
+
   firstStep = false;
   simTime = tNew;
+}
+
+/* ============================================================
+   SHORT-CIRCUIT / ISSUE DETECTION
+   ============================================================ */
+function detectCircuitIssues(){
+  if (netDirty) rebuildNetlist();
+  if (!netlist) return [];
+  const issues = [];
+  for (const e of netlist.entries){
+    if (e.b === null) continue;
+    const c = e.c;
+    if (e.a === e.b){
+      if (c.type === 'IDC' || c.type === 'CS'){
+        issues.push({ severity: 'error', msg: c.label + ': ' + TYPE_INFO[c.type].name + ' is shorted — output current bypasses the circuit' });
+      } else if (c.type === 'V' || c.type === 'VS'){
+        if (effectiveInternalR(c) < 1){
+          issues.push({ severity: 'warn', msg: c.label + ': ' + TYPE_INFO[c.type].name + ' is shorted — current limited only by internal resistance' });
+        }
+      }
+    } else if ((c.type === 'IDC' || c.type === 'CS') && !hasExternalPath(e, netlist.entries)){
+      issues.push({ severity: 'warn', msg: c.label + ': current source is isolated — no closed path' });
+    }
+  }
+  if (lastSimError) issues.unshift({ severity: 'error', msg: lastSimError });
+  if (lastOverVoltage > OVERVOLT_HI){
+    issues.push({ severity: 'warn', msg: 'Voltage exceeded ' + eng(lastOverVoltage, 'V') + ' — check for open current source paths' });
+  }
+  return issues;
+}
+
+function updateWarningBanner(){
+  const issues = detectCircuitIssues();
+  const key = issues.map(i => i.msg).join('|');
+  if (key === warningCacheKey) return;
+  warningCacheKey = key;
+  if (issues.length === 0){
+    warnBanner.classList.remove('show');
+    warnBanner.innerHTML = '';
+    return;
+  }
+  let html = '';
+  for (const issue of issues){
+    const icon = issue.severity === 'error' ? '⛔' : '⚠';
+    html += '<span class="entry">' + icon + ' ' + escAttr(issue.msg) + '</span>';
+  }
+  warnBanner.innerHTML = html;
+  warnBanner.classList.add('show');
+}
+
+function clearSimErrors(){
+  lastSimError = null;
+  lastOverVoltage = 0;
+  warningCacheKey = null;
 }
 
 /* ============================================================
@@ -826,12 +1169,14 @@ function restoreSnapshot(s){
   }
   updateInspector();
 }
-function resetTimeline(){
+function doResetTimeline(){
   hist = [];
   scrubIdx = -1;
   pushSnapshot();
   updateTimeUI();
+  clearSimErrors();
 }
+function resetTimeline(){ doResetTimeline(); }
 function scrubTo(i){
   if (i < 0 || i >= hist.length) return;
   running = false;
@@ -840,15 +1185,50 @@ function scrubTo(i){
   updateTimeUI();
   updateStatus();
 }
+
+/* ============================================================
+   GO LIVE — respects branch behavior mode
+   ============================================================ */
 function goLive(){
-  if (scrubIdx >= 0){
-    hist = hist.slice(0, scrubIdx + 1);
-    scrubIdx = -1;
+  if (scrubIdx < 0) return;
+  const hadFuture = (scrubIdx < hist.length - 1);
+
+  const doGoLive = () => {
+    if (scrubIdx >= 0){
+      hist = hist.slice(0, scrubIdx + 1);
+      scrubIdx = -1;
+    }
+    running = true;
+    updateTimeUI();
+    updateStatus();
+  };
+
+  if (!hadFuture){ doGoLive(); return; }
+
+  if (branchMode === 'auto'){
+    saveBranch();
+    doGoLive();
+  } else if (branchMode === 'discard'){
+    doGoLive();
+  } else {
+    showModal({
+      title: 'Go Live — overwrite future history?',
+      body:
+        'The recorded history from <b>t=' + hist[scrubIdx].t.toFixed(3) + ' s</b> to <b>t=' +
+        hist[hist.length-1].t.toFixed(3) + ' s</b> will be discarded when you resume.<br><br>' +
+        'Save the current state as a branch first?',
+      buttons: [
+        { label: 'Save branch & go live', primary: true, onClick: () => {
+            saveBranch();
+            doGoLive();
+          }},
+        { label: 'Discard & go live', danger: true, onClick: doGoLive },
+        { label: 'Cancel' }
+      ]
+    });
   }
-  running = true;
-  updateTimeUI();
-  updateStatus();
 }
+
 function updateTimeUI(){
   const maxIdx = Math.max(0, hist.length - 1);
   if (timeSlider.max !== String(maxIdx)) timeSlider.max = String(maxIdx);
@@ -857,9 +1237,388 @@ function updateTimeUI(){
   timeLabel.textContent = 't = ' + simTime.toFixed(4) + ' s';
   btnLive.classList.toggle('scrubbing', scrubIdx >= 0);
   btnLive.textContent = (scrubIdx >= 0) ? '⏵ Go Live' : '⏵ Live';
+  if (histInfo){
+    histInfo.textContent = 'hist ' + hist.length +
+      (MAX_HIST >= HARD_HIST_CAP ? '' : '/' + MAX_HIST);
+  }
+  updateBranchUI();
 }
 timeSlider.addEventListener('input', () => scrubTo(parseInt(timeSlider.value, 10)));
 btnLive.addEventListener('click', goLive);
+
+/* ============================================================
+   BRANCHES
+   ============================================================ */
+function snapshotState(){
+  return {
+    comps: comps.map(c => Object.assign({}, c)),
+    wires: wires.map(w => Object.assign({}, w)),
+    hist: hist.map(h => ({ t: h.t, firstStep: h.firstStep, states: h.states })),
+    simTime, firstStep, scrubIdx, nextId
+  };
+}
+
+function saveBranch(){
+  branchCounter++;
+  const id = nextBranchId++;
+  const parentId = currentBranchId;
+  const name = 'Branch #' + branchCounter + ' @ t=' + simTime.toFixed(3) + 's';
+  const newBranch = {
+    id, name, parentId,
+    time: new Date().toLocaleString(),
+    data: snapshotState()
+  };
+  branches.push(newBranch);
+  updateBranchUI();
+  return newBranch;
+}
+
+function loadBranch(id){
+  const b = branches.find(x => x.id === id);
+  if (!b) return;
+  const d = b.data;
+  comps = (d.comps || []).map(c => Object.assign({}, c));
+  wires = (d.wires || []).map(w => Object.assign({}, w));
+  hist = (d.hist || []).map(h => ({ t: h.t, firstStep: h.firstStep, states: h.states }));
+  simTime = d.simTime || 0;
+  firstStep = (d.firstStep !== undefined) ? d.firstStep : true;
+  scrubIdx = (d.scrubIdx !== undefined) ? d.scrubIdx : -1;
+  nextId = d.nextId || 1;
+
+  currentBranchId = id;
+
+  selected = null; hovered = null;
+  drag = null; panDrag = null;
+  wireStart = null; wireEnd = null;
+
+  clearSimErrors();
+  netDirty = true;
+  rebuildNetlist();
+  if (hist.length === 0) pushSnapshot();
+  updateInspector(); updateLive(); updateTimeUI(); updateStatus();
+  updateWarningBanner();
+  draw();
+}
+
+function normalizeBranchParents(){
+  const validIds = new Set([0]);
+  for (const b of branches) validIds.add(b.id);
+  for (const b of branches){
+    if (!validIds.has(b.parentId)) b.parentId = 0;
+  }
+}
+
+function buildBranchTree(){
+  const childMap = new Map();
+  childMap.set(0, []);
+  for (const b of branches){
+    if (!childMap.has(b.parentId)) childMap.set(b.parentId, []);
+    childMap.get(b.parentId).push(b);
+  }
+  for (const list of childMap.values()) list.sort((a,b) => a.id - b.id);
+  const rows = [];
+  function walk(branch, prefix, isLast, isRoot){
+    const connector = isRoot ? '' : (isLast ? '└─ ' : '├─ ');
+    rows.push({
+      branch: branch,
+      prefix: prefix + connector,
+      isRoot,
+      isCurrent: branch.id === currentBranchId
+    });
+    const children = childMap.get(branch.id) || [];
+    const nextPrefix = isRoot ? '' : prefix + (isLast ? '   ' : '│  ');
+    children.forEach((ch, i) => walk(ch, nextPrefix, i === children.length - 1, false));
+  }
+  const mainRow = { id: 0, name: 'Main', data: null };
+  walk(mainRow, '', (childMap.get(0) || []).length <= 1, true);
+  return rows;
+}
+
+function updateBranchUI(){
+  const curName = currentBranchId === 0 ? 'Main' :
+    (branches.find(b => b.id === currentBranchId)?.name || 'Main');
+  if (branchCount){
+    branchCount.textContent = branches.length > 0 ? ' (' + branches.length + ')' : '';
+  }
+  if (branchIndicator){
+    branchIndicator.textContent = 'on: ' + curName;
+  }
+  if (branchModeLabel){
+    branchModeLabel.textContent = branchMode;
+  }
+}
+
+function setBranchMode(mode){
+  if (mode === 'auto' || mode === 'discard' || mode === 'prompt'){
+    branchMode = mode;
+    updateBranchUI();
+  }
+}
+
+function promptLoadBranch(){
+  normalizeBranchParents();
+
+  if (branches.length === 0){
+    showModal({
+      title: 'No saved branches',
+      body:
+        'Use <b>File → Save branch</b> to create one, or enable <b>auto</b> branch behavior ' +
+        'in <b>Simulate → Branch behavior…</b> so branches are created automatically ' +
+        'when you press Go Live from a rewound state.',
+      buttons: [{ label: 'OK', primary: true }]
+    });
+    return;
+  }
+
+  const treeRows = buildBranchTree();
+  let tree = '<div id="gmBranchList">';
+  for (const row of treeRows){
+    const b = row.branch;
+    const isMain = row.isRoot;
+    const cls = 'gm-branch-row' + (row.isCurrent ? ' is-current' : '');
+    const nameCls = 'gm-branch-name' + (row.isCurrent ? ' current' : '');
+    tree += '<div class="' + cls + '" data-bid="' + b.id + '">' +
+              '<span class="gm-branch-prefix">' + escAttr(row.prefix) + '</span>' +
+              '<span class="' + nameCls + '">' + escAttr(b.name) + '</span>' +
+              '<span class="gm-branch-time">' + escAttr(b.time || '') + '</span>';
+    if (!isMain){
+      tree += '<span class="gm-branch-actions">' +
+                '<button class="act-load" data-act="load" data-bid="' + b.id + '" title="Load this branch">Load</button>' +
+                '<button data-act="rename" data-bid="' + b.id + '" title="Rename">✎</button>' +
+                '<button data-act="copy" data-bid="' + b.id + '" title="Copy">⧉</button>' +
+                '<button data-act="delete" class="act-delete" data-bid="' + b.id + '" title="Delete">✕</button>' +
+              '</span>';
+    }
+    tree += '</div>';
+  }
+  tree += '</div>';
+
+  showModal({
+    title: 'Branches',
+    body: 'Click <b>Load</b> to restore a branch. Use ✎ to rename, ⧉ to copy, or ✕ to delete.<br>' +
+          'Deleting a branch re‑parents its children to its own parent.' +
+          '<div style="margin-top:8px">' + tree + '</div>',
+    buttons: [{ label: 'Close' }]
+  });
+
+  gmBody.querySelectorAll('.gm-branch-actions button').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = +btn.dataset.bid;
+      const act = btn.dataset.act;
+      if (act === 'load')       { hideModal(); loadBranch(id); }
+      else if (act === 'rename'){ promptRenameBranch(id); }
+      else if (act === 'copy')  { doCopyBranch(id); }
+      else if (act === 'delete'){ confirmDeleteBranch(id); }
+    };
+  });
+}
+
+function promptRenameBranch(id){
+  const b = branches.find(x => x.id === id);
+  if (!b) return;
+  showModal({
+    title: 'Rename branch',
+    body:
+      'Rename <b>' + escAttr(b.name) + '</b>:<br><br>' +
+      '<input type="text" id="gmRenameInput" value="' + escAttr(b.name) + '" ' +
+      'style="width:100%;background:#0e141c;border:1px solid #2f4054;color:#dbe4ee;' +
+      'border-radius:5px;padding:7px 9px;font-family:ui-monospace,monospace;font-size:13px">',
+    buttons: [
+      { label: 'Save', primary: true, onClick: () => {
+          const inp = document.getElementById('gmRenameInput');
+          if (inp && inp.value.trim()){
+            b.name = inp.value.trim();
+            updateBranchUI();
+            promptLoadBranch();
+          }
+        }},
+      { label: 'Cancel', onClick: () => promptLoadBranch() }
+    ]
+  });
+  const inp = document.getElementById('gmRenameInput');
+  if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 30);
+}
+
+function doCopyBranch(id){
+  const orig = branches.find(x => x.id === id);
+  if (!orig) return;
+  const newBranch = {
+    id: nextBranchId++,
+    name: 'Copy of ' + orig.name,
+    parentId: orig.parentId,
+    time: new Date().toLocaleString(),
+    data: JSON.parse(JSON.stringify(orig.data))
+  };
+  branches.push(newBranch);
+  updateBranchUI();
+  promptLoadBranch();
+}
+
+function confirmDeleteBranch(id){
+  const b = branches.find(x => x.id === id);
+  if (!b) return;
+  const childCount = branches.filter(x => x.parentId === id).length;
+  showModal({
+    title: 'Delete branch?',
+    body:
+      'Delete <b>' + escAttr(b.name) + '</b>?' +
+      (childCount > 0
+        ? '<br><br>Its <b>' + childCount + '</b> child branch(es) will be moved up to its parent.'
+        : ''),
+    buttons: [
+      { label: 'Delete', danger: true, onClick: () => {
+          for (const child of branches){
+            if (child.parentId === id) child.parentId = b.parentId;
+          }
+          const idx = branches.findIndex(x => x.id === id);
+          if (idx >= 0) branches.splice(idx, 1);
+          if (currentBranchId === id) currentBranchId = 0;
+          updateBranchUI();
+          promptLoadBranch();
+        }},
+      { label: 'Cancel', onClick: () => promptLoadBranch() }
+    ]
+  });
+}
+
+/* ============================================================
+   BRANCH BEHAVIOR MODAL
+   ============================================================ */
+function promptBranchMode(){
+  const options = [
+    { value: 'auto',    title: 'Auto-create branch (default)',
+      desc: 'Saves a new branch automatically when going live from a rewound state.' },
+    { value: 'discard', title: 'Discard silently',
+      desc: 'Throws away future history without saving — same as before.' },
+    { value: 'prompt',  title: 'Ask before discarding',
+      desc: 'Shows a confirmation dialog each time.' }
+  ];
+  let html = '';
+  for (const opt of options){
+    const checked = branchMode === opt.value ? 'checked' : '';
+    html += '<label style="display:block;padding:8px 10px;border:1px solid #24303f;' +
+            'border-radius:6px;margin-bottom:6px;cursor:pointer">' +
+              '<input type="radio" name="bmode" value="' + opt.value + '" ' + checked + '> ' +
+              '<b>' + opt.title + '</b><br>' +
+              '<span style="color:#7f97b0;font-size:11px;margin-left:20px">' + opt.desc + '</span>' +
+            '</label>';
+  }
+  showModal({
+    title: 'Branch behavior',
+    body:
+      'When you press <b>Go Live</b> from a rewound state, the future history must be ' +
+      'overwritten. What should happen to the current state first?' +
+      '<div style="margin-top:10px">' + html + '</div>',
+    buttons: [
+      { label: 'Save', primary: true, onClick: () => {
+          const sel = document.querySelector('input[name="bmode"]:checked');
+          if (sel) setBranchMode(sel.value);
+        }},
+      { label: 'Cancel' }
+    ]
+  });
+}
+
+/* ============================================================
+   HISTORY LIMIT
+   ============================================================ */
+function promptHistoryLimit(){
+  const current = (MAX_HIST >= HARD_HIST_CAP) ? 'unlimited' : String(MAX_HIST);
+  showModal({
+    title: 'History limit',
+    body:
+      'Maximum number of snapshots kept in the timeline.<br>' +
+      'Higher values give finer scrubbing but use more memory.<br><br>' +
+      '<label style="display:block;margin-bottom:4px;color:#9fb3c8">Preset or custom (10 to ' +
+      HARD_HIST_CAP + ', or "unlimited"):</label>' +
+      '<input type="text" id="gmHistInput" value="' + escAttr(current) + '" ' +
+        'style="width:100%;background:#0e141c;border:1px solid #2f4054;color:#dbe4ee;' +
+        'border-radius:5px;padding:7px 9px;font-family:ui-monospace,monospace;font-size:13px">' +
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">' +
+        ['100','500','1000','3000','10000','unlimited'].map(v =>
+          '<button type="button" data-preset="' + v + '" ' +
+            'style="padding:3px 9px;border-radius:4px;border:1px solid #2f4054;' +
+            'background:#1d2733;color:#cfe0f0;cursor:pointer;font-family:inherit;font-size:11px">' +
+            v +
+          '</button>').join('') +
+      '</div>',
+    buttons: [
+      { label: 'Save', primary: true, onClick: () => {
+        const inp = document.getElementById('gmHistInput');
+        const v = (inp ? inp.value : '').trim().toLowerCase();
+        if (v === 'unlimited' || v === 'inf' || v === 'infinite'){
+          MAX_HIST = HARD_HIST_CAP;
+        } else {
+          const n = parseInt(v, 10);
+          if (!isFinite(n) || n < 10){
+            alert('Invalid value. Please enter a number ≥ 10, or "unlimited".');
+            return;
+          }
+          MAX_HIST = Math.min(n, HARD_HIST_CAP);
+        }
+        decimateHistoryToLimit();
+        updateTimeUI();
+        updateHistLabel();
+      }},
+      { label: 'Cancel' }
+    ]
+  });
+  const inp = document.getElementById('gmHistInput');
+  if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  gmBody.querySelectorAll('[data-preset]').forEach(btn => {
+    btn.onclick = () => {
+      const inp2 = document.getElementById('gmHistInput');
+      if (inp2) inp2.value = btn.dataset.preset;
+    };
+  });
+}
+function decimateHistoryToLimit(){
+  if (hist.length <= MAX_HIST) return;
+  while (hist.length > MAX_HIST){
+    const keep = [];
+    for (let i = 0; i < hist.length; i += 2) keep.push(hist[i]);
+    const last = hist[hist.length - 1];
+    if (keep[keep.length - 1] !== last) keep.push(last);
+    hist = keep;
+  }
+  if (scrubIdx >= 0) scrubIdx = Math.min(scrubIdx, hist.length - 1);
+}
+function updateHistLabel(){
+  if (histLimitLabel){
+    histLimitLabel.textContent = (MAX_HIST >= HARD_HIST_CAP) ? '∞' : String(MAX_HIST);
+  }
+}
+
+/* ============================================================
+   GENERIC MODAL
+   ============================================================ */
+function showModal(opts){
+  gmTitle.innerHTML = opts.title || '';
+  gmBody.innerHTML = opts.body || '';
+  gmButtons.innerHTML = '';
+  const buttons = opts.buttons || [{ label: 'OK', primary: true }];
+  for (const b of buttons){
+    const el = document.createElement('button');
+    el.textContent = b.label;
+    if (b.primary) el.classList.add('primary');
+    if (b.danger) el.classList.add('danger');
+    el.onclick = () => {
+      /* Run handler BEFORE hiding so it can read input fields. */
+      try {
+        if (b.onClick) b.onClick();
+      } finally {
+        hideModal();
+      }
+    };
+    gmButtons.appendChild(el);
+  }
+  gmModal.classList.add('show');
+}
+function hideModal(){ gmModal.classList.remove('show'); }
+gmModal.addEventListener('click', (e) => {
+  if (e.target === gmModal) hideModal();
+});
 
 /* ============================================================
    COMPONENT SHAPES
@@ -898,15 +1657,21 @@ function pathACSine(){
   ctx.moveTo(14,0);  ctx.lineTo(40,0);
   ctx.moveTo(14,0);
   ctx.arc(0,0,14,0,Math.PI*2,false);
-  // sine wave inside
   ctx.moveTo(-8, 0);
   ctx.quadraticCurveTo(-4, -9, 0, 0);
   ctx.quadraticCurveTo(4, 9, 8, 0);
 }
 function pathACCurrent(){
   pathACSine();
-  // arrow head near the + terminal side (left), indicating AC flow direction
   ctx.moveTo(-11, -4); ctx.lineTo(-14, 0); ctx.lineTo(-11, 4);
+}
+function pathDCCurrent(){
+  ctx.moveTo(-40,0); ctx.lineTo(-14,0);
+  ctx.moveTo(14,0);  ctx.lineTo(40,0);
+  ctx.moveTo(14,0);
+  ctx.arc(0,0,14,0,Math.PI*2,false);
+  ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
+  ctx.moveTo(4, -4); ctx.lineTo(8, 0); ctx.lineTo(4, 4);
 }
 function pathSwitch(c){
   ctx.moveTo(-40,0); ctx.lineTo(-10,0);
@@ -925,6 +1690,9 @@ function pathGround(){
   ctx.moveTo(-15,12); ctx.lineTo(15,12);
   ctx.moveTo(-9,18);  ctx.lineTo(9,18);
   ctx.moveTo(-4,24);  ctx.lineTo(4,24);
+}
+function pathJunction(){
+  ctx.arc(0, 0, 5, 0, Math.PI*2);
 }
 
 /* ============================================================
@@ -985,12 +1753,22 @@ function drawCompPath(c){
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.scale(view.scale, view.scale);
-  if (c.type !== 'GND' && !c.horiz) ctx.rotate(Math.PI/2);
+  if (c.type !== 'GND' && c.type !== 'JCT' && !c.horiz) ctx.rotate(Math.PI/2);
   ctx.lineWidth = isSel ? 3 : 2.5;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = isSel ? '#ffffff' : isHov ? '#a9d5ff' : info.color;
   if (isSel){ ctx.shadowColor = info.color; ctx.shadowBlur = 14 / view.scale; }
+
+  if (c.type === 'JCT'){
+    ctx.fillStyle = isSel ? '#ffffff' : isHov ? '#a9d5ff' : info.color;
+    ctx.beginPath();
+    pathJunction();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
   ctx.beginPath();
   switch (c.type){
     case 'R':   pathResistor();   break;
@@ -999,6 +1777,7 @@ function drawCompPath(c){
     case 'V':   pathBattery();    break;
     case 'VS':  pathACSine();     break;
     case 'CS':  pathACCurrent();  break;
+    case 'IDC': pathDCCurrent();  break;
     case 'SW':  pathSwitch(c);    break;
     case 'AM':  pathMeter();      break;
     case 'VM':  pathMeter();      break;
@@ -1032,6 +1811,13 @@ function drawCompText(c){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  if (c.type === 'JCT'){
+    ctx.font = '600 10px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.fillStyle = '#8ea4bb';
+    ctx.fillText(c.label, p.x, p.y + 20 * s);
+    return;
+  }
+
   let title = c.label;
   if (HAS_VALUE[c.type]) title += '  ' + eng(c.value, info.unit);
   if (IS_AC[c.type] && c.freq) title += '  ' + eng(c.freq, 'Hz');
@@ -1050,7 +1836,7 @@ function drawCompText(c){
   let reading;
   if (c.type === 'VM')      reading = eng(c._v || 0, 'V');
   else if (c.type === 'AM') reading = eng(c._i || 0, 'A');
-  else if (c.type === 'CS') reading = eng(c._i || 0, 'A') + ' · ' + eng(c._v || 0, 'V');
+  else if (IS_CSRC[c.type]) reading = eng(c._i || 0, 'A') + ' · ' + eng(c._v || 0, 'V');
   else                      reading = eng(c._v || 0, 'V') + ' · ' + eng(c._i || 0, 'A');
 
   ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
@@ -1214,10 +2000,28 @@ speedEl.addEventListener('input', () => setSpeed(parseFloat(speedEl.value)));
 
 function handleCommand(cmd){
   switch (cmd){
+    case 'new':
+      if (!confirm('Start a new (empty) circuit? The circuit and all saved branches will be cleared.')) return;
+      doClearCircuit();
+      break;
     case 'load-demo':
       loadDemo(); resetTimeline(); updateInspector(); updateLive(); fitView();
       break;
-    case 'clear': doClearCircuit(); break;
+    case 'export': exportCircuit(); break;
+    case 'import': importCircuit(); break;
+    case 'save-branch':
+      saveBranch();
+      updateBranchUI();
+      break;
+    case 'load-branch':
+      promptLoadBranch();
+      break;
+    case 'history-limit':
+      promptHistoryLimit();
+      break;
+    case 'branch-mode':
+      promptBranchMode();
+      break;
     case 'reset':
       simTime = 0; firstStep = true;
       for (const c of comps){ c.vPrev = 0; c.iPrev = 0; c._v = 0; c._i = 0; }
@@ -1237,18 +2041,219 @@ function handleCommand(cmd){
     case 'insert-V':    setTool('V');     break;
     case 'insert-VS':   setTool('VS');    break;
     case 'insert-CS':   setTool('CS');    break;
+    case 'insert-IDC':  setTool('IDC');   break;
     case 'insert-SW':   setTool('SW');    break;
     case 'insert-AM':   setTool('AM');    break;
     case 'insert-VM':   setTool('VM');    break;
     case 'insert-GND':  setTool('GND');   break;
+    case 'insert-JCT':  setTool('JCT');   break;
     case 'zoom-in':     zoomBy(1.2);      break;
     case 'zoom-out':    zoomBy(1/1.2);    break;
     case 'fit':         fitView();        break;
+    case 'show-help':   showHelp();       break;
   }
 }
 
 /* ============================================================
-   CLEAR CIRCUIT
+   HELP MODAL
+   ============================================================ */
+function showHelp(){ helpModal.classList.add('show'); }
+function hideHelp(){ helpModal.classList.remove('show'); }
+helpClose.addEventListener('click', hideHelp);
+helpModal.addEventListener('click', e => {
+  if (e.target === helpModal) hideHelp();
+});
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportCircuit(){
+  const data = {
+    version: 4,
+    meta: { exported: new Date().toISOString() },
+    comps: comps.map(c => ({
+      id: c.id, type: c.type, cx: c.cx, cy: c.cy,
+      horiz: c.horiz, value: c.value, rInternal: c.rInternal,
+      closed: c.closed, freq: c.freq, phase: c.phase, label: c.label,
+      vPrev: c.vPrev, iPrev: c.iPrev, _v: c._v, _i: c._i
+    })),
+    wires: wires.map(w => ({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 })),
+    nextId,
+    simTime, firstStep,
+    hist: hist.map(h => ({ t: h.t, firstStep: h.firstStep, states: h.states })),
+    scrubIdx, running, speed,
+    view: { ox: view.ox, oy: view.oy, scale: view.scale },
+    maxHist: (MAX_HIST >= HARD_HIST_CAP) ? 'unlimited' : MAX_HIST,
+    branchMode,
+    currentBranchId,
+    nextBranchId,
+    branchCounter,
+    branches: branches.map(b => ({
+      id: b.id, name: b.name, parentId: b.parentId, time: b.time,
+      data: {
+        comps: b.data.comps.map(c => Object.assign({}, c)),
+        wires: b.data.wires.map(w => Object.assign({}, w)),
+        hist: b.data.hist.map(h => ({ t: h.t, firstStep: h.firstStep, states: h.states })),
+        simTime: b.data.simTime,
+        firstStep: b.data.firstStep,
+        scrubIdx: b.data.scrubIdx,
+        nextId: b.data.nextId
+      }
+    }))
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  a.download = 'circuit-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function importCircuit(){ importFileInput.click(); }
+
+importFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      loadFromData(JSON.parse(ev.target.result));
+    } catch (err){
+      alert('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function loadFromData(data){
+  if (!data || typeof data !== 'object') throw new Error('Invalid JSON.');
+  if (!Array.isArray(data.comps)) throw new Error('Missing "comps" array.');
+  if (!Array.isArray(data.wires)) throw new Error('Missing "wires" array.');
+
+  comps = data.comps.map(c => ({
+    id: c.id, type: c.type, cx: c.cx, cy: c.cy,
+    horiz: !!c.horiz,
+    value: (typeof c.value === 'number') ? c.value : (TYPE_INFO[c.type] ? TYPE_INFO[c.type].def : 0),
+    rInternal: (typeof c.rInternal === 'number') ? c.rInternal : 0,
+    closed: !!c.closed,
+    freq: (typeof c.freq === 'number') ? c.freq : 0,
+    phase: (typeof c.phase === 'number') ? c.phase : 0,
+    label: c.label || (c.type + c.id),
+    vPrev: (typeof c.vPrev === 'number') ? c.vPrev : 0,
+    iPrev: (typeof c.iPrev === 'number') ? c.iPrev : 0,
+    _v: (typeof c._v === 'number') ? c._v : 0,
+    _i: (typeof c._i === 'number') ? c._i : 0
+  }));
+  wires = data.wires.map(w => ({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }));
+
+  let maxId = 0;
+  for (const c of comps) if (c.id > maxId) maxId = c.id;
+  nextId = Math.max(data.nextId || 0, maxId + 1);
+
+  simTime = data.simTime || 0;
+  firstStep = (data.firstStep !== undefined) ? data.firstStep : true;
+  hist = Array.isArray(data.hist) ? data.hist.map(h => ({
+    t: h.t, firstStep: h.firstStep, states: h.states || {}
+  })) : [];
+  scrubIdx = -1;
+  running = !!data.running;
+
+  if (typeof data.maxHist === 'number'){
+    MAX_HIST = Math.max(10, Math.min(HARD_HIST_CAP, data.maxHist));
+  } else if (data.maxHist === 'unlimited'){
+    MAX_HIST = HARD_HIST_CAP;
+  }
+  updateHistLabel();
+
+  if (typeof data.speed === 'number'){
+    speed = Math.max(0.01, Math.min(100, data.speed));
+    const sliderVal = Math.max(0, Math.min(100, 25 * Math.log10(speed) + 50));
+    speedEl.value = String(sliderVal);
+    let txt;
+    if (speed < 0.1)      txt = speed.toFixed(3);
+    else if (speed < 10)  txt = speed.toFixed(2);
+    else                  txt = speed.toFixed(1);
+    speedValEl.textContent = txt + '×';
+  }
+
+  if (data.view){
+    view.ox = data.view.ox || 40;
+    view.oy = data.view.oy || 40;
+    view.scale = data.view.scale || 1;
+  }
+
+  /* Branches */
+  branches = [];
+  if (Array.isArray(data.branches)){
+    let maxBid = 0;
+    for (const b of data.branches){
+      const d = b.data || {};
+      const branch = {
+        id: (typeof b.id === 'number') ? b.id : 0,
+        name: b.name || 'Imported',
+        parentId: (typeof b.parentId === 'number') ? b.parentId : 0,
+        time: b.time || '',
+        data: {
+          comps: (d.comps || []).map(c => Object.assign({}, c)),
+          wires: (d.wires || []).map(w => Object.assign({}, w)),
+          hist: (d.hist || []).map(h => ({ t: h.t, firstStep: h.firstStep, states: h.states })),
+          simTime: d.simTime || 0,
+          firstStep: (d.firstStep !== undefined) ? d.firstStep : true,
+          scrubIdx: (d.scrubIdx !== undefined) ? d.scrubIdx : -1,
+          nextId: d.nextId || 1
+        }
+      };
+      branches.push(branch);
+      if (branch.id > maxBid) maxBid = branch.id;
+    }
+    /* Fill in missing ids */
+    for (const b of branches){
+      if (!b.id || b.id <= 0){
+        b.id = ++maxBid;
+      }
+    }
+    nextBranchId = Math.max(data.nextBranchId || 0, maxBid + 1);
+    branchCounter = (typeof data.branchCounter === 'number') ? data.branchCounter : branches.length;
+  } else {
+    nextBranchId = 1;
+    branchCounter = 0;
+  }
+  normalizeBranchParents();
+  currentBranchId = (typeof data.currentBranchId === 'number') ? data.currentBranchId : 0;
+  if (currentBranchId !== 0 && !branches.find(b => b.id === currentBranchId)){
+    currentBranchId = 0;
+  }
+  if (data.branchMode === 'auto' || data.branchMode === 'discard' || data.branchMode === 'prompt'){
+    branchMode = data.branchMode;
+  }
+  updateBranchUI();
+  updateHistLabel();
+
+  selected = null; hovered = null;
+  drag = null; panDrag = null;
+  wireStart = null; wireEnd = null;
+
+  clearSimErrors();
+  netDirty = true;
+  rebuildNetlist();
+  if (hist.length === 0) pushSnapshot();
+
+  updateInspector();
+  updateLive();
+  updateTimeUI();
+  updateStatus();
+  updateWarningBanner();
+  draw();
+}
+
+/* ============================================================
+   CLEAR CIRCUIT  — FIX: also clears branches
    ============================================================ */
 function doClearCircuit(){
   drag = null; panDrag = null;
@@ -1259,14 +2264,20 @@ function doClearCircuit(){
   wires.length = 0;
   nextId = 1;
 
-  simTime = 0;
-  firstStep = true;
-  netDirty = true;
+  /* Clear branches too */
+  branches = [];
+  branchCounter = 0;
+  nextBranchId = 1;
+  currentBranchId = 0;
+
+  simTime = 0; firstStep = true; netDirty = true;
 
   hist = [];
   scrubIdx = -1;
   pushSnapshot();
   updateTimeUI();
+  updateBranchUI();
+  clearSimErrors();
 
   updateInspector();
   updateLive();
@@ -1324,12 +2335,10 @@ function addComp(type, gx, gy, horiz, value){
   const c = {
     id: nextId++, type,
     cx: gx, cy: gy,
-    horiz: (type === 'GND') ? true : horiz,
+    horiz: (type === 'GND' || type === 'JCT') ? true : horiz,
     value: (value !== undefined) ? value : TYPE_INFO[type].def,
-    rInternal: 0,
-    closed: false,
-    freq: IS_AC[type] ? 100 : 0,
-    phase: 0,
+    rInternal: 0, closed: false,
+    freq: IS_AC[type] ? 100 : 0, phase: 0,
     label: nextLabel(type),
     vPrev: 0, iPrev: 0, _v: 0, _i: 0
   };
@@ -1353,7 +2362,8 @@ function deleteElement(hit){
   updateInspector();
 }
 function rotateAction(){
-  if (selected && selected.kind === 'comp' && selected.comp.type !== 'GND'){
+  if (selected && selected.kind === 'comp' &&
+      selected.comp.type !== 'GND' && selected.comp.type !== 'JCT'){
     selected.comp.horiz = !selected.comp.horiz;
     netDirty = true;
     resetTimeline();
@@ -1365,6 +2375,7 @@ function toggleSwitch(c){
   if (c.type !== 'SW') return;
   c.closed = !c.closed;
   netDirty = true;
+  clearSimErrors();
   updateInspector();
   updateLive();
 }
@@ -1374,13 +2385,20 @@ function toggleSwitch(c){
    ============================================================ */
 function refreshInspectorLive(){
   if (!inspLiveEl) return;
-  if (!selected || selected.kind !== 'comp' || selected.comp.type === 'GND'){
+  if (!selected || selected.kind !== 'comp' ||
+      selected.comp.type === 'GND' || selected.comp.type === 'JCT'){
     inspLiveEl.innerHTML = '';
     return;
   }
   const c = selected.comp;
   let html = '<div class="kv"><span>Voltage</span><b>' + eng(c._v || 0, 'V') + '</b></div>' +
              '<div class="kv"><span>Current</span><b>' + eng(c._i || 0, 'A') + '</b></div>';
+  if (IS_VSRC[c.type]){
+    const entry = netlist && netlist.entries ? netlist.entries.find(e => e.c === c) : null;
+    if (entry && entry.isolated){
+      html += '<div class="muted" style="margin-top:6px;color:#7ee2a8">⚠ isolated — no conductive path</div>';
+    }
+  }
   if (c.type === 'AM')      html += '<div class="muted" style="margin-top:6px">Ideal short — reads the branch current</div>';
   else if (c.type === 'VM') html += '<div class="muted" style="margin-top:6px">' +
     (c.rInternal > 0 ? 'Finite input R — loads the circuit slightly' : 'Ideal open — draws no current') + '</div>';
@@ -1388,6 +2406,7 @@ function refreshInspectorLive(){
     (c.closed ? 'Closed — conducting' : 'Open — blocking') + '</div>';
   else if (IS_AC[c.type])   html += '<div class="muted" style="margin-top:6px">' +
     'Sine, f = ' + eng(c.freq, 'Hz') + ', φ = ' + (c.phase || 0).toFixed(1) + '°</div>';
+  else if (c.type === 'IDC') html += '<div class="muted" style="margin-top:6px">Steady DC current source</div>';
   inspLiveEl.innerHTML = html;
 }
 function updateInspector(){
@@ -1410,12 +2429,29 @@ function updateInspector(){
   const c = selected.comp;
   const info = TYPE_INFO[c.type];
   const isGnd = c.type === 'GND';
+  const isJct = c.type === 'JCT';
   const editable = !!HAS_VALUE[c.type];
   const hasRInt = !!HAS_RINT[c.type];
   const isAC = !!IS_AC[c.type];
 
   let html = '<div class="insp-head"><span class="dot" style="background:' + info.color + '"></span>' +
              info.name + '</div>';
+
+  if (isJct){
+    html += '<div class="muted" style="margin:8px 0">Forces all wires passing through this grid point to connect.</div>';
+    html += '<div class="row" style="margin-top:8px"><label>Label</label></div>';
+    html += '<input type="text" id="lblInput" value="' + escAttr(c.label) + '">';
+    html += '<div class="row" style="margin-top:10px">';
+    html += '<button id="delSel" style="background:#3a1f26;border:1px solid #6d2f3d;color:#ffb3c0;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit">Delete</button></div>';
+    el.innerHTML = html;
+    document.getElementById('lblInput').onchange = (ev) => {
+      const v = ev.target.value.trim();
+      if (v) c.label = v; else ev.target.value = c.label;
+    };
+    document.getElementById('delSel').onclick = () => deleteElement(selected);
+    return;
+  }
+
   html += '<div class="row"><label>Label</label></div>';
   html += '<input type="text" id="lblInput" value="' + escAttr(c.label) + '">';
 
@@ -1590,7 +2626,7 @@ function updateLive(){
   }
   let rows = '';
   for (const c of comps){
-    if (c.type === 'GND') continue;
+    if (c.type === 'GND' || c.type === 'JCT') continue;
     let name = c.label;
     if (c.type === 'SW') name += c.closed ? ' [C]' : ' [O]';
     if (IS_AC[c.type] && c.freq) name += ' @' + eng(c.freq, 'Hz');
@@ -1640,18 +2676,25 @@ window.addEventListener('keydown', e => {
   else if (k === 'w' || k === 'W'){ setTool('wire'); }
   else if (k === 'h' || k === 'H'){ setTool('pan'); }
   else if (k === 'e' || k === 'E'){ setTool('erase'); }
-  else if (k === 'r' || k === 'R' || k === '1'){ setTool('R'); }
-  else if (k === 'c' || k === 'C' || k === '2'){ setTool('C'); }
-  else if (k === 'l' || k === 'L' || k === '3'){ setTool('L'); }
-  else if (k === 'b' || k === 'B' || k === '4'){ setTool('V'); }
-  else if (k === 't' || k === 'T' || k === '5'){ setTool('SW'); }
-  else if (k === 'y' || k === 'Y' || k === '9'){ setTool('VS'); }
-  else if (k === 'z' || k === 'Z' || k === '0'){ setTool('CS'); }
-  else if (k === 'a' || k === 'A' || k === '6'){ setTool('AM'); }
-  else if (k === 'v' || k === 'V' || k === '7'){ setTool('VM'); }
-  else if (k === 'g' || k === 'G' || k === '8'){ setTool('GND'); }
+  else if (k === 'r' || k === 'R'){ setTool('R'); }
+  else if (k === 'c' || k === 'C'){ setTool('C'); }
+  else if (k === 'l' || k === 'L'){ setTool('L'); }
+  else if (k === 'b' || k === 'B'){ setTool('V'); }
+  else if (k === 't' || k === 'T'){ setTool('SW'); }
+  else if (k === 'y' || k === 'Y'){ setTool('VS'); }
+  else if (k === 'z' || k === 'Z'){ setTool('CS'); }
+  else if (k === 'd' || k === 'D'){ setTool('IDC'); }
+  else if (k === 'a' || k === 'A'){ setTool('AM'); }
+  else if (k === 'v' || k === 'V'){ setTool('VM'); }
+  else if (k === 'g' || k === 'G'){ setTool('GND'); }
+  else if (k === 'j' || k === 'J'){ setTool('JCT'); }
   else if (k === 'x' || k === 'X'){ rotateAction(); }
-  else if (k === 'Escape'){ selected = null; updateInspector(); }
+  else if (k === '?'){ showHelp(); }
+  else if (k === 'Escape'){
+    if (gmModal.classList.contains('show')) hideModal();
+    else if (helpModal.classList.contains('show')) hideHelp();
+    else { selected = null; updateInspector(); }
+  }
   else if (k === ' '){ e.preventDefault(); toggleRun(); }
   else if (k === 'f' || k === 'F'){ fitView(); }
   else if (k === '+' || k === '='){ zoomBy(1.2); }
@@ -1720,6 +2763,7 @@ function frame(now){
   } else if (netDirty){
     rebuildNetlist();
   }
+  updateWarningBanner();
   draw();
   updateTimeUI();
   if (now - lastReadout > 120){
@@ -1737,10 +2781,13 @@ resize();
 loadDemo();
 setTool('select');
 setSpeed(parseFloat(speedEl.value));
+updateHistLabel();
+updateBranchUI();
 updateInspector();
 updateLive();
 resetTimeline();
 updateStatus();
+updateWarningBanner();
 requestAnimationFrame(frame);
 </script>
 </body>
